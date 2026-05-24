@@ -45,11 +45,11 @@ export default function Portfolio() {
         const total = formatted.reduce((sum, t) => sum + (t.quote || 0), 0);
         setTotalUsd(total);
 
-        // 2. DeFi positions via Zerion (optional, will gracefully fail if no key)
+        // 2. DeFi positions via Zerion
         try {
           const defiRes = await axios.get(`/api/zerion?address=${address}`);
           setDefiPositions(defiRes.data.data || []);
-        } catch (e) { console.log("Zerion not configured"); }
+        } catch (e) { console.log("Zerion not configured or no positions"); }
 
         // 3. Risk alert via Pyth simulation
         const pythRes = await axios.get(`/api/pyth?symbol=ETH/USD`);
@@ -72,20 +72,17 @@ export default function Portfolio() {
 
   return (
     <div className="space-y-8">
-      {/* Total Value */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
         <h2 className="text-xl font-semibold">Total Portfolio Value</h2>
         <p className="text-4xl font-bold text-green-600">${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
       </div>
 
-      {/* Risk Alert */}
       {riskAlert && (
         <div className="bg-red-50 p-4 rounded-xl border border-red-200">
           <p className="text-red-700">{riskAlert}</p>
         </div>
       )}
 
-      {/* Tokens Table */}
       <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
         <div className="p-4 border-b font-semibold text-lg">🪙 Token Balances</div>
         <div className="overflow-x-auto">
@@ -110,7 +107,6 @@ export default function Portfolio() {
         </div>
       </div>
 
-      {/* DeFi Positions */}
       {defiPositions.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border p-4">
           <h2 className="font-semibold text-lg mb-3">🏦 DeFi Positions</h2>
