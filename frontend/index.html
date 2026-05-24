@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arc Testnet Swap</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(145deg, #0a0f1c, #0c1222);
+            font-family: system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .card {
+            background: rgba(18, 25, 45, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(59,130,246,0.25);
+            max-width: 520px;
+            width: 100%;
+            padding: 1.8rem;
+        }
+        h2 { font-size: 1.8rem; background: linear-gradient(135deg, #E0E7FF, #A5B4FC); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 0.25rem; }
+        .sub { color: #8b9bcf; font-size: 0.85rem; margin-bottom: 1.8rem; border-left: 3px solid #3b82f6; padding-left: 12px; }
+        button, select, input {
+            width: 100%;
+            margin: 12px 0 8px;
+            padding: 12px 16px;
+            border-radius: 60px;
+            font-size: 1rem;
+            background: #0a0f1c;
+            border: 1px solid #2d3a5e;
+            color: white;
+            outline: none;
+        }
+        button {
+            background: #2b3b6e;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover:enabled { background: #3b4f8c; transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .connect-btn { background: #0f2b3d; border: 1px solid #3b82f6; }
+        .swap-btn { background: #3b82f6; margin-top: 24px; }
+        .status-card {
+            background: #0a0f1c;
+            border-radius: 1.5rem;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 0.85rem;
+            font-family: monospace;
+            color: #b9c7f0;
+            border: 1px solid #2d3a5e;
+            word-break: break-all;
+        }
+        .error-text { color: #ffaea5; }
+        .success-text { color: #a5f0c0; }
+        label { font-size: 0.8rem; color: #9bb3e0; margin-left: 8px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>🔄 Arc Testnet Swap</h2>
+    <div class="sub">USDC ↔ EURC · Your Own Site</div>
+
+    <button id="connectBtn" class="connect-btn">🦊 Connect MetaMask</button>
+    <div id="walletStatus" class="status-card">⚡ Not connected</div>
+
+    <label>From</label>
+    <select id="fromToken">
+        <option value="USDC">USDC</option>
+        <option value="EURC">EURC</option>
+    </select>
+
+    <label>Amount</label>
+    <input type="number" id="amount" value="1.0" step="0.5" placeholder="0.0">
+
+    <label>To</label>
+    <select id="toToken">
+        <option value="EURC">EURC</option>
+        <option value="USDC">USDC</option>
+    </select>
+
+    <button id="swapBtn" class="swap-btn" disabled>💱 Swap</button>
+    <div id="msgArea" class="status-card">✅ Ready. Connect wallet.</div>
+</div>
+
+<script>
+    // *** IMPORTANT: Replace with your Vercel deployment URL later ***
+    const BACKEND_URL = 'https://your-vercel-project.vercel.app/api/swap';
+
+    const EXPECTED_CHAIN_ID = 5042002; // Arc Testnet
+    let userAddress = null;
+    let provider = null;
+
+    // DOM elements
+    const connectBtn = document.getElementById('connectBtn');
+    const walletStatusDiv = document.getElementById('walletStatus');
+    const fromTokenSelect = document.getElementById('fromToken');
+    const toTokenSelect = document.getElementById('toToken');
+    const amountInput = document.getElementById('amount');
+    const swapBtn = document.getElementById('swapBtn');
+    const msgDiv = document.getElementById('msgArea');
+
+    function setMessage(msg, isError = false, isSuccess = false) {
+        msgDiv.innerHTML = msg;
+        msgDiv.classList.remove('error-text', 'success-text');
+        if (isError) msgDiv.classList.add('error-text');
+        if (isSuccess) msgDiv.classList.add('success-text');
+    }
+
+    async function ensureArcNetwork(ethereumProvider) {
+        const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
+        try {
+            const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+            if (currentChainId === chainIdHex) return true;
+        } catch(e) {}
+
+        try {
+            await ethereumProvider.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: chainIdHex }]
+            });
+            return true;
+        } catch (switchError) {
+            if (switchError.code === 4902) {
+                await ethereumProvider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: chainIdHex,
+                        chainName: 'Arc Testnet',
+                        nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                        rpcUrls: ['https://rpc.testnet.arc.network'],
+                        blockExplorerUrls: ['https://explorer.testnet.arc.network']
+                    }]
+                });
+                return true;
+            }
+            throw new Error('Cannot switch to Arc Testnet');
+        }
+    }
+
+    connectBtn.onclick = async () => {
+        if (!window.ethereum) {
+            setMessage('❌ MetaMask not installed', true);
+            return;
+        }
+        try {
+            setMessage('Connecting...');
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!accounts.length) throw new Error('No accounts');
+            userAddress = accounts[0];
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+
+            await ensureArcNetwork(window.ethereum);
+            const network = await provider.getNetwork();
+            if (network.chainId !== EXPECTED_CHAIN_ID) {
+                throw new Error('Please switch to Arc Testnet');
+            }
+
+            walletStatusDiv.innerHTML = `✅ ${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc Testnet`;
+            setMessage('Connected to Arc Testnet. Ready to swap!', false, true);
+            swapBtn.disabled = false;
+        } catch (err) {
+            console.error(err);
+            setMessage(`Connection error: ${err.message}`, true);
+            swapBtn.disabled = true;
+        }
+    };
+
+    async function executeSwap() {
+        if (!userAddress) {
+            setMessage('Connect wallet first', true);
+            return;
+        }
+        const fromToken = fromTokenSelect.value;
+        const toToken = toTokenSelect.value;
+        const amount = parseFloat(amountInput.value);
+        if (isNaN(amount) || amount <= 0) {
+            setMessage('Invalid amount', true);
+            return;
+        }
+
+        setMessage('🔄 Sending swap request...', false);
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏳ Processing...';
+
+        try {
+            const response = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tokenIn: fromToken,
+                    tokenOut: toToken,
+                    amountIn: amount.toString(),
+                    walletAddress: userAddress
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Swap failed');
+
+            const txHash = data.transactionHash;
+            setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
+
+            if (provider) {
+                try {
+                    await provider.waitForTransaction(txHash, 1);
+                    setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
+                } catch (waitErr) {
+                    setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            let friendly = err.message;
+            if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
+            else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
+            setMessage(`❌ Swap failed: ${friendly}`, true);
+        } finally {
+            swapBtn.disabled = false;
+            swapBtn.textContent = '💱 Swap';
+        }
+    }
+
+    swapBtn.onclick = executeSwap;
+
+    // Handle wallet events
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+            if (!accounts.length) {
+                userAddress = null;
+                swapBtn.disabled = true;
+                walletStatusDiv.innerHTML = '🔴 Disconnected';
+                setMessage('Wallet disconnected', true);
+            } else {
+                userAddress = accounts[0];
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                walletStatusDiv.innerHTML = `✅ ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`;
+                setMessage('Account changed, ready to swap.', false);
+                swapBtn.disabled = false;
+            }
+        });
+        window.ethereum.on('chainChanged', () => window.location.reload());
+    }
+
+    setMessage('💡 Connect MetaMask and switch to Arc Testnet.', false);
+</script>
+</body>
+</html>
