@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arc Testnet Swap</title>
+    <title>Arc Testnet Swap – Working</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
-        /* Your CSS (unchanged) */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background: linear-gradient(145deg, #0a0f1c, #0c1222);
@@ -69,9 +68,9 @@
 <body>
 <div class="card">
     <h2>🔄 Arc Testnet Swap</h2>
-    <div class="sub">USDC ↔ EURC · Your Own Site</div>
+    <div class="sub">USDC ↔ EURC</div>
 
-    <button id="connectBtn" class="connect-btn">🦊 Connect MetaMask</button>
+    <button id="connectBtn" class="connect-btn">🦊 Connect Wallet</button>
     <div id="walletStatus" class="status-card">⚡ Not connected</div>
 
     <label>From</label>
@@ -117,15 +116,10 @@
     async function ensureArcNetwork(ethereumProvider) {
         const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
         try {
-            const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
-            if (currentChainId === chainIdHex) return true;
-        } catch(e) {}
-        try {
             await ethereumProvider.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: chainIdHex }]
             });
-            return true;
         } catch (switchError) {
             if (switchError.code === 4902) {
                 await ethereumProvider.request({
@@ -138,9 +132,7 @@
                         blockExplorerUrls: ['https://explorer.testnet.arc.network']
                     }]
                 });
-                return true;
-            }
-            throw new Error('Cannot switch to Arc Testnet');
+            } else throw switchError;
         }
     }
 
@@ -161,7 +153,7 @@
                 throw new Error('Please switch to Arc Testnet');
             }
             walletStatusDiv.innerHTML = `✅ ${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc Testnet`;
-            setMessage('Connected to Arc Testnet. Ready to swap!', false, true);
+            setMessage('Connected. Ready to swap!', false, true);
             swapBtn.disabled = false;
         } catch (err) {
             console.error(err);
@@ -170,62 +162,62 @@
         }
     };
 
-   async function executeSwap() {
-    if (!userAddress) {
-        setMessage('Connect wallet first', true);
-        return;
-    }
-    const fromToken = fromTokenSelect.value;
-    const toToken = toTokenSelect.value;
-    const amount = parseFloat(amountInput.value);
-    if (isNaN(amount) || amount <= 0) {
-        setMessage('Invalid amount', true);
-        return;
-    }
-
-    setMessage('🔄 Sending swap request...', false);
-    swapBtn.disabled = true;
-    swapBtn.textContent = '⏳ Processing...';
-
-    try {
-        const response = await fetch(BACKEND_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tokenIn: fromToken,
-                tokenOut: toToken,
-                amountIn: amount.toString(),
-                walletAddress: userAddress
-            })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Swap failed');
-
-        // ✅ FIXED: use data, not result
-        const txHash = data.txHash || data.transactionHash;
-        if (!txHash) throw new Error('No transaction hash in response');
-
-        setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
-
-        if (provider) {
-            try {
-                await provider.waitForTransaction(txHash, 1);
-                setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
-            } catch (waitErr) {
-                setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
-            }
+    async function executeSwap() {
+        if (!userAddress) {
+            setMessage('Connect wallet first', true);
+            return;
         }
-    } catch (err) {
-        console.error(err);
-        let friendly = err.message;
-        if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
-        else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
-        setMessage(`❌ Swap failed: ${friendly}`, true);
-    } finally {
-        swapBtn.disabled = false;
-        swapBtn.textContent = '💱 Swap';
+        const fromToken = fromTokenSelect.value;
+        const toToken = toTokenSelect.value;
+        const amount = parseFloat(amountInput.value);
+        if (isNaN(amount) || amount <= 0) {
+            setMessage('Invalid amount', true);
+            return;
+        }
+
+        setMessage('🔄 Sending swap request...', false);
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏳ Processing...';
+
+        try {
+            const response = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tokenIn: fromToken,
+                    tokenOut: toToken,
+                    amountIn: amount.toString(),
+                    walletAddress: userAddress
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Swap failed');
+
+            // ✅ FIXED: use 'data' (not 'result') and look for 'txHash'
+            const txHash = data.txHash || data.transactionHash;
+            if (!txHash) throw new Error('No transaction hash in response');
+
+            setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
+
+            if (provider) {
+                try {
+                    await provider.waitForTransaction(txHash, 1);
+                    setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
+                } catch (waitErr) {
+                    setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            let friendly = err.message;
+            if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
+            else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
+            setMessage(`❌ Swap failed: ${friendly}`, true);
+        } finally {
+            swapBtn.disabled = false;
+            swapBtn.textContent = '💱 Swap';
+        }
     }
-}
 
     swapBtn.onclick = executeSwap;
 
