@@ -1,5 +1,6 @@
 import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
+import { privateKeyToAccount } from 'viem/accounts';   // <-- ADD THIS
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -8,6 +9,12 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
+  }
+
+  // --- TEMPORARY GET route (remove after you get the address) ---
+  if (req.method === 'GET') {
+    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
+    return res.status(200).json({ backendAddress: account.address });
   }
 
   if (req.method !== 'POST') {
