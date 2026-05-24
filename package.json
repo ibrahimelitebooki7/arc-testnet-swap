@@ -1,0 +1,13 @@
+{
+  "name": "arc-testnet-swap",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@circle-fin/app-kit": "latest",
+    "@circle-fin/adapter-viem-v2": "latest",
+    "viem": "^2.30.0"
+  }
+}
