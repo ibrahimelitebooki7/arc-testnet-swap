@@ -59,6 +59,8 @@ export default async function handler(req, res) {
     // 10. Execute the swap
     const result = await kit.swap(params);
 
+    console.log("Full result from kit.swap:", JSON.stringify(result, null, 2));
+
     // 11. Send a successful JSON response back to the frontend
     return res.status(200).json({
       success: true,
