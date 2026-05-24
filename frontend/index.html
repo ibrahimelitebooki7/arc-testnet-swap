@@ -6,6 +6,7 @@
     <title>Arc Testnet Swap</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
+        /* Your CSS (unchanged) */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background: linear-gradient(145deg, #0a0f1c, #0c1222);
@@ -93,14 +94,13 @@
 </div>
 
 <script>
-    // *** IMPORTANT: Replace with your Vercel deployment URL later ***
-    const BACKEND_URL = 'https://your-vercel-project.vercel.app/api/swap';
+    // ✅ CORRECT BACKEND URL for your deployed Vercel project
+    const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
 
     const EXPECTED_CHAIN_ID = 5042002; // Arc Testnet
     let userAddress = null;
     let provider = null;
 
-    // DOM elements
     const connectBtn = document.getElementById('connectBtn');
     const walletStatusDiv = document.getElementById('walletStatus');
     const fromTokenSelect = document.getElementById('fromToken');
@@ -231,7 +231,6 @@
 
     swapBtn.onclick = executeSwap;
 
-    // Handle wallet events
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', (accounts) => {
             if (!accounts.length) {
