@@ -366,7 +366,7 @@
   }
 
   copyBtn.addEventListener('click', () => { if(userAddress) { navigator.clipboard.writeText(userAddress); showToast('Copied'); } });
-  faucetBtn.addEventListener('click', () => window.open('https://faucet.arc.network', '_blank'));
+  faucetBtn.addEventListener('click', () => window.open('https://faucet.circle.com/', '_blank'));
   guideBtn.addEventListener('click', () => guideModal.classList.add('active'));
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if(e.target === guideModal) guideModal.classList.remove('active'); });
