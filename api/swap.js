@@ -2,17 +2,14 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
-  // 1. Set CORS headers to allow your frontend to communicate with this API
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // 2. Handle the browser's pre-flight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
 
-  // 3. Only accept POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: "Method not allowed" });
   }
