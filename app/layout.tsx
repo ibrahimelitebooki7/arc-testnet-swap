@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Adaptive Crypto Portfolio",
-  description: "Multi‑chain wallet dashboard",
+  description: "Multi‑chain wallet dashboard with DeFi positions",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
