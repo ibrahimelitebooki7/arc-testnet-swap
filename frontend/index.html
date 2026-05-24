@@ -210,7 +210,7 @@
         if (!response.ok) throw new Error(data.error || 'Swap failed');
 
         // Try to get transaction hash from multiple possible field names
-        const txHash = data.transactionHash || data.txHash || data.hash;
+         const txHash = data.txHash || data.transactionHash;
         
         if (!txHash) {
             console.error("No transaction hash in response", data);
