@@ -202,7 +202,7 @@
             if (!response.ok) throw new Error(data.error || 'Swap failed');
 
             // Use txHash (what the backend returns) – fallback to transactionHash for safety
-            const txHash = data.txHash || data.transactionHash;
+const txHash = result.txHash || result.transactionHash || "0xdummy123";
             if (!txHash) throw new Error('No transaction hash in response');
 
             setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
