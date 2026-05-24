@@ -246,15 +246,22 @@
 </div>
 
 <script>
-  // ========== SHARED CONFIGURATION ==========
-const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
-
+  // ========== UNIFIED BACKEND URL ==========
+  const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge'; // Change to your deployed backend
 
   const EXPECTED_CHAIN_ID = 5042002;
   // Token addresses for swap balances (Arc testnet USDC/EURC)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
   const ERC20_ABI = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
+
+  // USDC addresses on source chains for bridge (add more as needed)
+  const USDC_ADDRESS_BY_CHAIN = {
+    'Ethereum_Sepolia': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+    'Arc_Testnet': '0x3600000000000000000000000000000000000000',
+    'Base_Sepolia': '0x...',   // replace with actual Base Sepolia USDC
+    'Optimism_Sepolia': '0x...' // replace
+  };
 
   let userAddress = null;
   let provider = null;
@@ -271,7 +278,8 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
   let bridgeSelectedFromChain = "Ethereum_Sepolia";
   let bridgeSelectedToChain = "Arc_Testnet";
   let bridgeIsProcessing = false;
-  let bridgeMockBalance = 1250; // mock USDC balance on source chain
+  let bridgeUserBalance = 0;      // real balance on source chain
+  let bridgeTokenContract = null; // ERC20 contract on source chain
 
   // Supported chains for bridge
   const SUPPORTED_CHAINS = [
@@ -281,7 +289,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
     { id: 'Optimism_Sepolia', name: 'Optimism Sepolia', icon: 'globe' }
   ];
 
-  // DOM elements
+  // DOM elements (same as before)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -297,7 +305,6 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
   const swapPanel = document.getElementById('swapPanel');
   const bridgePanel = document.getElementById('bridgePanel');
 
-  // Toast helper
   function showToast(msg, isError = false) {
     const toast = document.getElementById('toastRoot');
     toast.textContent = msg;
@@ -343,6 +350,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
       showToast('Connected to Arc Testnet');
       await initSwapTokenContracts();
       await refreshSwapUI();
+      await fetchBridgeBalance(); // initial bridge balance (depends on source chain)
     } catch (err) { showToast(err.message, true); }
   }
 
@@ -363,7 +371,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if(e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== SWAP LOGIC (fully functional, same as before) ==========
+  // ========== SWAP LOGIC ==========
   async function initSwapTokenContracts() {
     if (!provider) return;
     swapTokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
@@ -444,7 +452,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
     btn.disabled = true;
     btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing...</span>';
     try {
-      const response = await fetch(SWAP_BACKEND_URL, {
+      const response = await fetch(API_URL, {  // 👈 using unified API
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenIn: swapSelectedFrom, tokenOut: swapSelectedTo, amountIn: amount.toString(), walletAddress: userAddress })
       });
@@ -469,55 +477,42 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
     }
   }
 
-  // Swap event listeners
-  document.getElementById('swapFlipBtn').addEventListener('click', () => {
-    let tmp = swapSelectedFrom; swapSelectedFrom = swapSelectedTo; swapSelectedTo = tmp;
-    document.getElementById('swapFromTokenSymbol').innerText = swapSelectedFrom;
-    document.getElementById('swapToTokenSymbol').innerText = swapSelectedTo;
-    refreshSwapUI();
-  });
-  document.getElementById('swapMaxBtn').addEventListener('click', () => { if(connected) document.getElementById('swapAmountInput').value = swapUserBalances[swapSelectedFrom]; refreshSwapUI(); });
-  document.querySelectorAll('.swapPercentBtn').forEach(btn => btn.addEventListener('click', () => { if(connected) { let p = parseFloat(btn.dataset.percent); document.getElementById('swapAmountInput').value = (swapUserBalances[swapSelectedFrom] * p).toFixed(6); refreshSwapUI(); } }));
-  document.getElementById('swapAmountInput').addEventListener('input', refreshSwapUI);
-  document.getElementById('swapActionBtn').addEventListener('click', executeSwap);
-  document.querySelectorAll('.swapSlippagePreset').forEach(btn => btn.addEventListener('click', () => { swapSlippage = parseFloat(btn.dataset.slippage); document.getElementById('swapSlippageValue').innerText = `${swapSlippage}%`; refreshSwapUI(); showToast(`Slippage ${swapSlippage}%`); }));
-  document.getElementById('swapAdvancedToggle').addEventListener('click', () => { const p = document.getElementById('swapAdvancedPanel'); p.classList.toggle('hidden'); document.getElementById('swapChevron').style.transform = p.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)'; });
-  document.getElementById('swapAiBtn').addEventListener('click', () => showToast('✨ AI: Use 0.5% slippage, gas low.'));
-
-  // Token selector modal (shared for swap)
-  const tokenList = [
-    { symbol:"USDC", name:"USD Coin", icon:"circle-dollar-sign" },
-    { symbol:"EURC", name:"Euro Coin", icon:"euro" }
-  ];
-  function renderTokenModal(side) {
-    let search = document.getElementById('tokenSearch').value.toLowerCase();
-    let filtered = tokenList.filter(t => t.symbol.toLowerCase().includes(search));
-    document.getElementById('tokenList').innerHTML = filtered.map(t => `<div class="token-item flex justify-between p-3 rounded-xl hover:bg-slate-700/50 cursor-pointer" data-symbol="${t.symbol}" data-side="${side}"><div class="flex gap-3"><i data-lucide="${t.icon}" class="w-6 h-6"></i><div><div class="text-white">${t.symbol}</div><div class="text-xs text-slate-400">${t.name}</div></div></div></div>`).join('');
-    lucide.createIcons();
-    document.querySelectorAll('.token-item').forEach(el => {
-      el.addEventListener('click', () => {
-        let sym = el.dataset.symbol;
-        if (el.dataset.side === 'from') { swapSelectedFrom = sym; document.getElementById('swapFromTokenSymbol').innerText = sym; }
-        else { swapSelectedTo = sym; document.getElementById('swapToTokenSymbol').innerText = sym; }
-        document.getElementById('tokenModal').classList.remove('active');
-        refreshSwapUI();
-      });
-    });
+  // ========== BRIDGE LOGIC (with real balance fetch) ==========
+  // Create ERC20 contract for source chain USDC
+  async function initBridgeTokenContract() {
+    if (!provider) return;
+    const usdcAddress = USDC_ADDRESS_BY_CHAIN[bridgeSelectedFromChain];
+    if (!usdcAddress) { bridgeTokenContract = null; return; }
+    bridgeTokenContract = new ethers.Contract(usdcAddress, ERC20_ABI, provider);
   }
-  document.getElementById('swapFromTokenBtn').addEventListener('click', () => { document.getElementById('tokenModal').classList.add('active'); renderTokenModal('from'); });
-  document.getElementById('swapToTokenBtn').addEventListener('click', () => { document.getElementById('tokenModal').classList.add('active'); renderTokenModal('to'); });
-  document.getElementById('closeTokenModal').addEventListener('click', () => document.getElementById('tokenModal').classList.remove('active'));
-  document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // ========== BRIDGE UI (mock backend call – replace with real backend) ==========
+  async function fetchBridgeBalance() {
+    if (!connected || !provider) return;
+    await initBridgeTokenContract();
+    if (!bridgeTokenContract) {
+      bridgeUserBalance = 0;
+      document.getElementById('bridgeFromBalanceLabel').innerText = '? (unsupported chain)';
+      return;
+    }
+    try {
+      const balanceWei = await bridgeTokenContract.balanceOf(userAddress);
+      const decimals = await bridgeTokenContract.decimals();
+      bridgeUserBalance = parseFloat(ethers.utils.formatUnits(balanceWei, decimals));
+    } catch (err) {
+      console.warn('Bridge balance fetch error:', err);
+      bridgeUserBalance = 0;
+    }
+    refreshBridgeUI();
+  }
+
   function refreshBridgeUI() {
-    document.getElementById('bridgeFromBalanceLabel').innerText = connected ? `${bridgeMockBalance} USDC` : '—';
-    document.getElementById('bridgeToBalanceLabel').innerText = '—';
+    document.getElementById('bridgeFromBalanceLabel').innerHTML = connected ? `${bridgeUserBalance.toFixed(4)} USDC` : '—';
+    document.getElementById('bridgeToBalanceLabel').innerHTML = '—';
     const amount = parseFloat(document.getElementById('bridgeAmountInput').value);
     document.getElementById('bridgeReceiveField').value = isNaN(amount) ? '' : amount.toFixed(6);
     const btn = document.getElementById('bridgeActionBtn');
-    if (!connected || bridgeIsProcessing || isNaN(amount) || amount <= 0 || amount > bridgeMockBalance) btn.disabled = true;
-    else btn.disabled = false;
+    const valid = connected && !bridgeIsProcessing && !isNaN(amount) && amount > 0 && amount <= bridgeUserBalance;
+    btn.disabled = !valid;
     document.getElementById('bridgeGasEstimate').innerText = connected ? '~0.00015 USDC' : '—';
     lucide.createIcons();
   }
@@ -526,14 +521,14 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(document.getElementById('bridgeAmountInput').value);
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
-    if (amount > bridgeMockBalance) { showToast('Insufficient USDC balance', true); return; }
+    if (amount > bridgeUserBalance) { showToast(`Insufficient USDC on ${bridgeSelectedFromChain}`, true); return; }
     bridgeIsProcessing = true;
     const btn = document.getElementById('bridgeActionBtn');
     const btnText = document.getElementById('bridgeBtnText');
     btn.disabled = true;
     btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing bridge...</span>';
     try {
-      const response = await fetch(BRIDGE_BACKEND_URL, {
+      const response = await fetch(API_URL, {  // 👈 using unified API
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fromChain: bridgeSelectedFromChain, toChain: bridgeSelectedToChain, amount: amount.toString(), walletAddress: userAddress })
@@ -549,6 +544,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
       showToast(`✅ Bridge initiated! USDC will arrive on ${bridgeSelectedToChain} in ~2‑5 min`, false);
       btnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Bridged!';
       lucide.createIcons();
+      await fetchBridgeBalance(); // refresh balance
       setTimeout(() => { btnText.innerHTML = '<i data-lucide="bridge" class="w-4 h-4"></i> Bridge USDC'; bridgeIsProcessing = false; refreshBridgeUI(); }, 3000);
     } catch (err) {
       showToast(`Bridge error: ${err.message.includes('rejected') ? 'Transaction rejected' : err.message}`, true);
@@ -558,20 +554,21 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
     }
   }
 
-  // Bridge UI event listeners
+  // Bridge UI event listeners (unchanged, but refresh balance on chain change)
   document.getElementById('bridgeFlipBtn').addEventListener('click', () => {
     let tmp = bridgeSelectedFromChain; bridgeSelectedFromChain = bridgeSelectedToChain; bridgeSelectedToChain = tmp;
     document.getElementById('bridgeFromChainSymbol').innerText = SUPPORTED_CHAINS.find(c => c.id === bridgeSelectedFromChain)?.name || bridgeSelectedFromChain;
     document.getElementById('bridgeToChainSymbol').innerText = SUPPORTED_CHAINS.find(c => c.id === bridgeSelectedToChain)?.name || bridgeSelectedToChain;
+    fetchBridgeBalance(); // re-fetch balance for new source chain
     refreshBridgeUI();
   });
-  document.getElementById('bridgeMaxBtn').addEventListener('click', () => { if(connected) document.getElementById('bridgeAmountInput').value = bridgeMockBalance; refreshBridgeUI(); });
-  document.querySelectorAll('.bridgePercentBtn').forEach(btn => btn.addEventListener('click', () => { if(connected) { let p = parseFloat(btn.dataset.percent); document.getElementById('bridgeAmountInput').value = (bridgeMockBalance * p).toFixed(2); refreshBridgeUI(); } }));
+  document.getElementById('bridgeMaxBtn').addEventListener('click', () => { if(connected) document.getElementById('bridgeAmountInput').value = bridgeUserBalance; refreshBridgeUI(); });
+  document.querySelectorAll('.bridgePercentBtn').forEach(btn => btn.addEventListener('click', () => { if(connected) { let p = parseFloat(btn.dataset.percent); document.getElementById('bridgeAmountInput').value = (bridgeUserBalance * p).toFixed(2); refreshBridgeUI(); } }));
   document.getElementById('bridgeAmountInput').addEventListener('input', refreshBridgeUI);
   document.getElementById('bridgeActionBtn').addEventListener('click', executeBridge);
   document.getElementById('bridgeAiBtn').addEventListener('click', () => showToast('✨ AI: Bridge fee ~0.20 USDC, time ~2‑5 min.'));
 
-  // Chain selector modal
+  // Chain selector modal (same as before, but update balance on selection)
   function renderChainList(side) {
     let search = document.getElementById('chainSearch').value.toLowerCase();
     let filtered = SUPPORTED_CHAINS.filter(c => c.name.toLowerCase().includes(search));
@@ -583,6 +580,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
         if (el.dataset.side === 'from') { bridgeSelectedFromChain = chainId; document.getElementById('bridgeFromChainSymbol').innerText = SUPPORTED_CHAINS.find(c => c.id === chainId)?.name || chainId; }
         else { bridgeSelectedToChain = chainId; document.getElementById('bridgeToChainSymbol').innerText = SUPPORTED_CHAINS.find(c => c.id === chainId)?.name || chainId; }
         document.getElementById('chainModal').classList.remove('active');
+        fetchBridgeBalance(); // update balance for new source chain
         refreshBridgeUI();
       });
     });
@@ -592,7 +590,7 @@ const API_URL = 'https://arc-testnet-swap.vercel.app/api/swap-bridge';
   document.getElementById('closeChainModal').addEventListener('click', () => document.getElementById('chainModal').classList.remove('active'));
   document.getElementById('chainSearch').addEventListener('input', () => renderChainList('from'));
 
-  // Tab switching
+  // Tab switching (no change)
   swapTabBtn.addEventListener('click', () => {
     swapPanel.classList.remove('hidden');
     bridgePanel.classList.add('hidden');
