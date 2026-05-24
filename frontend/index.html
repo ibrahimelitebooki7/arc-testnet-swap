@@ -3,63 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arc Testnet Swap – Working</title>
+    <title>Arc Testnet Swap - Direct</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: linear-gradient(145deg, #0a0f1c, #0c1222);
-            font-family: system-ui, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-        }
-        .card {
-            background: rgba(18, 25, 45, 0.75);
-            backdrop-filter: blur(12px);
-            border-radius: 2rem;
-            border: 1px solid rgba(59,130,246,0.25);
-            max-width: 520px;
-            width: 100%;
-            padding: 1.8rem;
-        }
+        body { background: linear-gradient(145deg, #0a0f1c, #0c1222); font-family: system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .card { background: rgba(18, 25, 45, 0.75); backdrop-filter: blur(12px); border-radius: 2rem; border: 1px solid rgba(59,130,246,0.25); max-width: 520px; width: 100%; padding: 1.8rem; }
         h2 { font-size: 1.8rem; background: linear-gradient(135deg, #E0E7FF, #A5B4FC); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 0.25rem; }
         .sub { color: #8b9bcf; font-size: 0.85rem; margin-bottom: 1.8rem; border-left: 3px solid #3b82f6; padding-left: 12px; }
-        button, select, input {
-            width: 100%;
-            margin: 12px 0 8px;
-            padding: 12px 16px;
-            border-radius: 60px;
-            font-size: 1rem;
-            background: #0a0f1c;
-            border: 1px solid #2d3a5e;
-            color: white;
-            outline: none;
-        }
-        button {
-            background: #2b3b6e;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        button, select, input { width: 100%; margin: 12px 0 8px; padding: 12px 16px; border-radius: 60px; font-size: 1rem; background: #0a0f1c; border: 1px solid #2d3a5e; color: white; outline: none; }
+        button { background: #2b3b6e; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
         button:hover:enabled { background: #3b4f8c; transform: scale(0.98); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .connect-btn { background: #0f2b3d; border: 1px solid #3b82f6; }
         .swap-btn { background: #3b82f6; margin-top: 24px; }
-        .status-card {
-            background: #0a0f1c;
-            border-radius: 1.5rem;
-            padding: 12px 16px;
-            margin: 16px 0;
-            font-size: 0.85rem;
-            font-family: monospace;
-            color: #b9c7f0;
-            border: 1px solid #2d3a5e;
-            word-break: break-all;
-        }
+        .status-card { background: #0a0f1c; border-radius: 1.5rem; padding: 12px 16px; margin: 16px 0; font-size: 0.85rem; font-family: monospace; color: #b9c7f0; border: 1px solid #2d3a5e; word-break: break-all; }
         .error-text { color: #ffaea5; }
         .success-text { color: #a5f0c0; }
         label { font-size: 0.8rem; color: #9bb3e0; margin-left: 8px; }
@@ -68,36 +26,34 @@
 <body>
 <div class="card">
     <h2>🔄 Arc Testnet Swap</h2>
-    <div class="sub">USDC ↔ EURC</div>
-
+    <div class="sub">USDC ↔ EURC · Direct Wallet</div>
     <button id="connectBtn" class="connect-btn">🦊 Connect Wallet</button>
     <div id="walletStatus" class="status-card">⚡ Not connected</div>
-
     <label>From</label>
     <select id="fromToken">
         <option value="USDC">USDC</option>
         <option value="EURC">EURC</option>
     </select>
-
     <label>Amount</label>
     <input type="number" id="amount" value="1.0" step="0.5" placeholder="0.0">
-
     <label>To</label>
     <select id="toToken">
         <option value="EURC">EURC</option>
         <option value="USDC">USDC</option>
     </select>
-
     <button id="swapBtn" class="swap-btn" disabled>💱 Swap</button>
     <div id="msgArea" class="status-card">✅ Ready. Connect wallet.</div>
 </div>
 
 <script>
+    // ⚙️ CONFIGURATION
+    // IMPORTANT: Replace 'arc-testnet-swap.vercel.app' with your actual frontend domain
     const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
     const EXPECTED_CHAIN_ID = 5042002;
     let userAddress = null;
     let provider = null;
 
+    // DOM elements
     const connectBtn = document.getElementById('connectBtn');
     const walletStatusDiv = document.getElementById('walletStatus');
     const fromTokenSelect = document.getElementById('fromToken');
@@ -116,31 +72,22 @@
     async function ensureArcNetwork(ethereumProvider) {
         const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
         try {
-            await ethereumProvider.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: chainIdHex }]
-            });
+            await ethereumProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
         } catch (switchError) {
             if (switchError.code === 4902) {
-                await ethereumProvider.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: chainIdHex,
-                        chainName: 'Arc Testnet',
-                        nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-                        rpcUrls: ['https://rpc.testnet.arc.network'],
-                        blockExplorerUrls: ['https://explorer.testnet.arc.network']
-                    }]
-                });
+                await ethereumProvider.request({ method: 'wallet_addEthereumChain', params: [{
+                    chainId: chainIdHex,
+                    chainName: 'Arc Testnet',
+                    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                    rpcUrls: ['https://rpc.testnet.arc.network'],
+                    blockExplorerUrls: ['https://explorer.testnet.arc.network']
+                }]});
             } else throw switchError;
         }
     }
 
     connectBtn.onclick = async () => {
-        if (!window.ethereum) {
-            setMessage('❌ MetaMask not installed', true);
-            return;
-        }
+        if (!window.ethereum) { setMessage('❌ No wallet found (Rabby/MetaMask)', true); return; }
         try {
             setMessage('Connecting...');
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -149,11 +96,9 @@
             provider = new ethers.providers.Web3Provider(window.ethereum);
             await ensureArcNetwork(window.ethereum);
             const network = await provider.getNetwork();
-            if (network.chainId !== EXPECTED_CHAIN_ID) {
-                throw new Error('Please switch to Arc Testnet');
-            }
+            if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Please switch to Arc Testnet');
             walletStatusDiv.innerHTML = `✅ ${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc Testnet`;
-            setMessage('Connected. Ready to swap!', false, true);
+            setMessage('Connected to Arc Testnet. Ready to swap!', false, true);
             swapBtn.disabled = false;
         } catch (err) {
             console.error(err);
@@ -163,23 +108,19 @@
     };
 
     async function executeSwap() {
-        if (!userAddress) {
-            setMessage('Connect wallet first', true);
-            return;
-        }
+        if (!userAddress) { setMessage('Connect wallet first', true); return; }
         const fromToken = fromTokenSelect.value;
         const toToken = toTokenSelect.value;
         const amount = parseFloat(amountInput.value);
-        if (isNaN(amount) || amount <= 0) {
-            setMessage('Invalid amount', true);
-            return;
-        }
+        if (isNaN(amount) || amount <= 0) { setMessage('Invalid amount', true); return; }
 
-        setMessage('🔄 Sending swap request...', false);
+        setMessage('🔄 Getting swap parameters...', false);
         swapBtn.disabled = true;
-        swapBtn.textContent = '⏳ Processing...';
+        swapBtn.textContent = '⏳ Fetching quote...';
 
         try {
+            // ⭐ 1. Ask your backend to prepare the transaction (using your Kit Key and PRIVATE_KEY)
+            // The backend will NOT send the tx, it just prepares it and returns the transaction data.
             const response = await fetch(BACKEND_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -190,23 +131,24 @@
                     walletAddress: userAddress
                 })
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Swap failed');
+            const swapData = await response.json();
+            if (!response.ok) throw new Error(swapData.error || 'Failed to prepare transaction');
 
-            // ✅ FIXED: use 'data' (not 'result') and look for 'txHash'
-            const txHash = data.txHash || data.transactionHash;
-            if (!txHash) throw new Error('No transaction hash in response');
-
-            setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
-
-            if (provider) {
-                try {
-                    await provider.waitForTransaction(txHash, 1);
-                    setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
-                } catch (waitErr) {
-                    setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
-                }
-            }
+            // ⭐ 2. Use the returned transaction data and send it with the user's wallet
+            setMessage('🔄 Please confirm transaction in your wallet...', false);
+            swapBtn.textContent = '⏳ Sign transaction...';
+            const tx = {
+                from: userAddress,
+                to: swapData.to,
+                data: swapData.data,
+                value: swapData.value,
+                gasPrice: swapData.gasPrice,
+                gasLimit: ethers.BigNumber.from(swapData.gas || 500000)
+            };
+            const sendTx = await provider.getSigner().sendTransaction(tx);
+            setMessage(`✅ Swap submitted! Tx: ${sendTx.hash.slice(0,10)}... Waiting confirmation...`, false, true);
+            await sendTx.wait(1);
+            setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
         } catch (err) {
             console.error(err);
             let friendly = err.message;
@@ -239,7 +181,7 @@
         window.ethereum.on('chainChanged', () => window.location.reload());
     }
 
-    setMessage('💡 Connect MetaMask and switch to Arc Testnet.', false);
+    setMessage('💡 Connect your wallet and switch to Arc Testnet.', false);
 </script>
 </body>
 </html>
