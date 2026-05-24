@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const apiKey = process.env.COVALENT_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "No API key" }, { status: 500 });
 
+  // Covalent uses 'cqt_' keys with v1 endpoint
   const url = `https://api.covalenthq.com/v1/${chainId}/address/${address}/balances_v2/?key=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
