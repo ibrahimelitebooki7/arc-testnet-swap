@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Xroga · Arc Swap 2026 – Real Balances</title>
+  <title>Xroga · Arc Swap 2026 – Fast</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -29,7 +29,6 @@
     }
     .glass-panel:hover::after { opacity: 1; }
     .morph-btn { position: relative; overflow: hidden; transition: all 0.2s; }
-    .progress-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #60a5fa, #a78bfa); width: 0%; transition: width 0.2s linear; }
     .toast-notify {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
       background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px;
@@ -79,7 +78,7 @@
       <div id="networkHealth" class="text-[10px] text-emerald-400/80">● Arc live</div>
     </div>
 
-    <!-- FROM card with real balance -->
+    <!-- FROM card -->
     <div class="glass-panel rounded-2xl p-4 mb-3">
       <div class="flex justify-between text-xs text-slate-400 mb-1.5">
         <span>You pay</span>
@@ -162,7 +161,6 @@
 
     <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20 relative overflow-hidden">
       <span id="swapBtnText">Swap tokens</span>
-      <div class="progress-bar" id="progressBar"></div>
     </button>
   </div>
 </main>
@@ -221,7 +219,6 @@
   const slippageValueSpan = document.getElementById('slippageValue');
   const swapBtn = document.getElementById('swapActionBtn');
   const swapBtnText = document.getElementById('swapBtnText');
-  const progressBar = document.getElementById('progressBar');
   const flipBtn = document.getElementById('flipSwapBtn');
   const maxBtn = document.getElementById('maxFromBtn');
   const fromTokenBtn = document.getElementById('fromTokenBtn');
@@ -393,6 +390,7 @@
     if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); }
   });
 
+  // ========== OPTIMIZED SWAP FUNCTION (NO ARTIFICIAL DELAYS) ==========
   async function executeSwap() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -401,12 +399,12 @@
 
     isProcessing = true;
     swapBtn.disabled = true;
-    let width = 0;
-    const interval = setInterval(() => { width += 5; progressBar.style.width = width + "%"; if (width >= 100) clearInterval(interval); }, 40);
-    swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Fetching quote...</span>';
+    // Show loading state immediately – no fake progress bar
+    swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
     lucide.createIcons();
 
     try {
+      // 1. Get swap parameters from backend
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -420,6 +418,7 @@
       const swapData = await response.json();
       if (!response.ok) throw new Error(swapData.error || 'Failed to prepare transaction');
 
+      // 2. Immediately prompt user to sign (wallet popup appears now)
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
       const tx = {
         from: userAddress,
@@ -429,22 +428,27 @@
         gasPrice: swapData.gasPrice,
         gasLimit: ethers.BigNumber.from(swapData.gas || 500000)
       };
+      
+      // Send transaction – this triggers the wallet confirmation popup instantly
       const sendTx = await provider.getSigner().sendTransaction(tx);
       showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}... confirming`, false);
-      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
+      
+      // 3. Wait for confirmation (this is the only real delay – blockchain time)
+      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on chain...</span>';
       await sendTx.wait(1);
-      clearInterval(interval); progressBar.style.width = "100%";
+      
       showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo} completed.`, false);
       swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
       lucide.createIcons();
-      await refreshUI();
+      await refreshUI(); // Refresh balances after swap
+      
       setTimeout(() => {
         swapBtnText.innerHTML = "Swap tokens";
         isProcessing = false;
         validateSwap();
       }, 2000);
     } catch (err) {
-      clearInterval(interval); progressBar.style.width = "0%";
+      console.error(err);
       let friendly = err.message;
       if (friendly.includes('user rejected')) friendly = 'Transaction rejected.';
       else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
@@ -455,6 +459,7 @@
     }
   }
 
+  // ========== UI EVENT HANDLERS ==========
   flipBtn.addEventListener('click', () => {
     let tmp = selectedFrom;
     selectedFrom = selectedTo;
