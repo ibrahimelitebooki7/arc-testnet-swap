@@ -1,79 +1,48 @@
 import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
-import { privateKeyToAccount } from 'viem/accounts';   // <-- ADD THIS
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // --- TEMPORARY GET route (remove after you get the address) ---
-  if (req.method === 'GET') {
-    const account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`);
-    return res.status(200).json({ backendAddress: account.address });
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  // 4. Wrap the entire logic to catch and return errors as JSON
   try {
-    // 5. Check if the required environment variables exist
-    if (!process.env.KIT_KEY) {
-      throw new Error("Missing KIT_KEY environment variable");
-    }
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("Missing PRIVATE_KEY environment variable");
-    }
-
-    // 6. Extract parameters from the request body
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
-
-    // 7. Validate the request body
     if (!tokenIn || !tokenOut || !amountIn) {
-      return res.status(400).json({ error: "Missing required fields: tokenIn, tokenOut, amountIn" });
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // 8. Initialize the Circle App Kit SDK
+    // Initialize AppKit with your backend wallet key (used only for preparation)
     const kit = new AppKit();
     const adapter = createViemAdapterFromPrivateKey({
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    // 9. Prepare swap parameters exactly as defined in the official documentation
-    // The slippage configuration is handled internally by the SDK.
-    // Documentation: https://docs.arc.network/app-kit/swap
+    // ⭐ Prepare the swap params
     const params = {
-      from: { adapter, chain: "Arc_Testnet" },
-      tokenIn: tokenIn,
-      tokenOut: tokenOut,
+      from: { adapter, chain: 'Arc_Testnet' },
+      tokenIn,
+      tokenOut,
       amountIn: amountIn.toString(),
       config: { kitKey: process.env.KIT_KEY },
     };
 
-    // 10. Execute the swap
-const result = await kit.swap(params);
-
-console.log("Full result from kit.swap:", JSON.stringify(result, null, 2));
-
-// 11. Send a successful JSON response back to the frontend
-return res.status(200).json({
-  success: true,
-  transactionHash: result.transactionHash,
-  fullResult: result   // ← ADD THIS LINE to see everything Circle SDK returned
-});
-
+    // ⭐ Instead of sending the tx, we now build the unsigned transaction data
+    const swapCall = await kit.swap(params);
+    // Transform swapCall into the shape your frontend expects
+    const transaction = {
+      to: swapCall.to,
+      data: swapCall.data,
+      value: swapCall.value,
+      gas: swapCall.gas || 500000,
+      gasPrice: swapCall.gasPrice,
+    };
+    return res.status(200).json(transaction);
   } catch (error) {
-    console.error("Swap error:", error);
-    // 12. Catch any error and return a proper JSON error message
-    return res.status(500).json({
-      success: false,
-      error: error.message || "An internal server error occurred."
-    });
+    console.error(error);
+    return res.status(500).json({ error: error.message });
   }
 }
