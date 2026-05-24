@@ -175,17 +175,29 @@
         }
     };
 
-    async function executeSwap() {
+      async function executeSwap() {
     if (!userAddress) {
-        setMessage('Connect wallet first', true);
-        return;
+      setMessage('Connect wallet first', true);
+      return;
     }
+
+    // 1. Get the wallet client from the connected provider
+    // This uses Viem's methods. Make sure viem is installed on your frontend.
+    const { createWalletClient, custom } = await import('viem');
+    const { arcTestnet } = await import('viem/chains');
+
+    // Create a wallet client using the window.ethereum provider from Rabby
+    const walletClient = createWalletClient({
+      chain: arcTestnet,
+      transport: custom(window.ethereum),
+    });
+
     const fromToken = fromTokenSelect.value;
     const toToken = toTokenSelect.value;
     const amount = parseFloat(amountInput.value);
     if (isNaN(amount) || amount <= 0) {
-        setMessage('Invalid amount', true);
-        return;
+      setMessage('Invalid amount', true);
+      return;
     }
 
     setMessage('🔄 Sending swap request...', false);
@@ -193,51 +205,43 @@
     swapBtn.textContent = '⏳ Processing...';
 
     try {
-        const response = await fetch(BACKEND_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tokenIn: fromToken,
-                tokenOut: toToken,
-                amountIn: amount.toString(),
-                walletAddress: userAddress
-            })
-        });
-        
-        const data = await response.json();
-        console.log("Backend response:", data);  // 👈 See what you get
-        
-        if (!response.ok) throw new Error(data.error || 'Swap failed');
+      // 2. Send the request along with the wallet client
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenIn: fromToken,
+          tokenOut: toToken,
+          amountIn: amount.toString(),
+          walletAddress: userAddress,
+          walletClient: walletClient, // This is the key change
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Swap failed');
 
-        // Try to get transaction hash from multiple possible field names
-         const txHash = data.txHash || data.transactionHash;
-        
-        if (!txHash) {
-            console.error("No transaction hash in response", data);
-            throw new Error('Swap response missing transaction hash. Check console.');
+      const txHash = data.txHash;
+      setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
+
+      if (provider) {
+        try {
+          await provider.waitForTransaction(txHash, 1);
+          setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
+        } catch (waitErr) {
+          setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
         }
-
-        setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
-
-        if (provider) {
-            try {
-                await provider.waitForTransaction(txHash, 1);
-                setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
-            } catch (waitErr) {
-                setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
-            }
-        }
+      }
     } catch (err) {
-        console.error(err);
-        let friendly = err.message;
-        if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
-        else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
-        setMessage(`❌ Swap failed: ${friendly}`, true);
+      console.error(err);
+      let friendly = err.message;
+      if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
+      else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
+      setMessage(`❌ Swap failed: ${friendly}`, true);
     } finally {
-        swapBtn.disabled = false;
-        swapBtn.textContent = '💱 Swap';
+      swapBtn.disabled = false;
+      swapBtn.textContent = '💱 Swap';
     }
-}
+  }
 
     swapBtn.onclick = executeSwap;
 
