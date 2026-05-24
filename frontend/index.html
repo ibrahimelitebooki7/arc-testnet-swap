@@ -94,10 +94,8 @@
 </div>
 
 <script>
-    // ✅ CORRECT BACKEND URL for your deployed Vercel project
     const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
-
-    const EXPECTED_CHAIN_ID = 5042002; // Arc Testnet
+    const EXPECTED_CHAIN_ID = 5042002;
     let userAddress = null;
     let provider = null;
 
@@ -122,7 +120,6 @@
             const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
             if (currentChainId === chainIdHex) return true;
         } catch(e) {}
-
         try {
             await ethereumProvider.request({
                 method: 'wallet_switchEthereumChain',
@@ -158,13 +155,11 @@
             if (!accounts.length) throw new Error('No accounts');
             userAddress = accounts[0];
             provider = new ethers.providers.Web3Provider(window.ethereum);
-
             await ensureArcNetwork(window.ethereum);
             const network = await provider.getNetwork();
             if (network.chainId !== EXPECTED_CHAIN_ID) {
                 throw new Error('Please switch to Arc Testnet');
             }
-
             walletStatusDiv.innerHTML = `✅ ${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc Testnet`;
             setMessage('Connected to Arc Testnet. Ready to swap!', false, true);
             swapBtn.disabled = false;
@@ -175,73 +170,62 @@
         }
     };
 
-      async function executeSwap() {
-    if (!userAddress) {
-      setMessage('Connect wallet first', true);
-      return;
-    }
-
-    // 1. Get the wallet client from the connected provider
-    // This uses Viem's methods. Make sure viem is installed on your frontend.
-    const { createWalletClient, custom } = await import('viem');
-    const { arcTestnet } = await import('viem/chains');
-
-    // Create a wallet client using the window.ethereum provider from Rabby
-    const walletClient = createWalletClient({
-      chain: arcTestnet,
-      transport: custom(window.ethereum),
-    });
-
-    const fromToken = fromTokenSelect.value;
-    const toToken = toTokenSelect.value;
-    const amount = parseFloat(amountInput.value);
-    if (isNaN(amount) || amount <= 0) {
-      setMessage('Invalid amount', true);
-      return;
-    }
-
-    setMessage('🔄 Sending swap request...', false);
-    swapBtn.disabled = true;
-    swapBtn.textContent = '⏳ Processing...';
-
-    try {
-      // 2. Send the request along with the wallet client
-      const response = await fetch(BACKEND_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenIn: fromToken,
-          tokenOut: toToken,
-          amountIn: amount.toString(),
-          walletAddress: userAddress,
-          walletClient: walletClient, // This is the key change
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Swap failed');
-
-      const txHash = data.txHash;
-      setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
-
-      if (provider) {
-        try {
-          await provider.waitForTransaction(txHash, 1);
-          setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
-        } catch (waitErr) {
-          setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
+    async function executeSwap() {
+        if (!userAddress) {
+            setMessage('Connect wallet first', true);
+            return;
         }
-      }
-    } catch (err) {
-      console.error(err);
-      let friendly = err.message;
-      if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
-      else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
-      setMessage(`❌ Swap failed: ${friendly}`, true);
-    } finally {
-      swapBtn.disabled = false;
-      swapBtn.textContent = '💱 Swap';
+        const fromToken = fromTokenSelect.value;
+        const toToken = toTokenSelect.value;
+        const amount = parseFloat(amountInput.value);
+        if (isNaN(amount) || amount <= 0) {
+            setMessage('Invalid amount', true);
+            return;
+        }
+
+        setMessage('🔄 Sending swap request...', false);
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏳ Processing...';
+
+        try {
+            const response = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tokenIn: fromToken,
+                    tokenOut: toToken,
+                    amountIn: amount.toString(),
+                    walletAddress: userAddress
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Swap failed');
+
+            // Use txHash (what the backend returns) – fallback to transactionHash for safety
+            const txHash = data.txHash || data.transactionHash;
+            if (!txHash) throw new Error('No transaction hash in response');
+
+            setMessage(`✅ Swap submitted! Tx: ${txHash.slice(0,10)}... Waiting confirmation...`, false, true);
+
+            if (provider) {
+                try {
+                    await provider.waitForTransaction(txHash, 1);
+                    setMessage(`✅ Swap confirmed! ${fromToken} → ${toToken} completed.`, false, true);
+                } catch (waitErr) {
+                    setMessage(`⚠️ Swap submitted but confirmation uncertain: ${waitErr.message}`, true);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            let friendly = err.message;
+            if (friendly.includes('user rejected')) friendly = 'Transaction rejected in wallet.';
+            else if (friendly.includes('insufficient')) friendly = 'Insufficient balance or allowance.';
+            setMessage(`❌ Swap failed: ${friendly}`, true);
+        } finally {
+            swapBtn.disabled = false;
+            swapBtn.textContent = '💱 Swap';
+        }
     }
-  }
 
     swapBtn.onclick = executeSwap;
 
