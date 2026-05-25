@@ -2,7 +2,6 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,7 +13,7 @@ export default async function handler(req, res) {
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
 
     if (!tokenIn || !tokenOut || !amountIn) {
-      return res.status(400).json({ error: "Missing required fields: tokenIn, tokenOut, amountIn" });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
 
     const result = await kit.swap(params);
 
-    // Return the exact transaction object the frontend expects
+    // Return the transaction object exactly as the frontend expects
     const transaction = {
       to: result.to,
       data: result.data,
