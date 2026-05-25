@@ -20,9 +20,7 @@ export default async function handler(req, res) {
     }
 
     const kit = new AppKit();
-    const adapter = createViemAdapterFromPrivateKey({
-      privateKey: process.env.PRIVATE_KEY,
-    });
+    const adapter = createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
 
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
