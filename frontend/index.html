@@ -144,7 +144,7 @@
       </button>
     </div>
 
-    <!-- advanced settings (slippage + gas) -->
+    <!-- advanced settings -->
     <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
       <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
         <div class="flex gap-3 items-center">
@@ -172,14 +172,14 @@
       </div>
     </div>
 
-    <!-- swap action button -->
+    <!-- swap button -->
     <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
       <span id="swapBtnText">Swap tokens</span>
     </button>
   </div>
 </main>
 
-<!-- Token selector modal -->
+<!-- Token modal -->
 <div id="tokenModal" class="token-modal">
   <div class="token-drawer p-5">
     <div class="flex justify-between items-center mb-4">
@@ -208,22 +208,27 @@
       <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">2</div><p>Click “Connect Wallet” – automatically adds Arc Testnet.</p></div>
       <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">3</div><p>Get free test tokens from the <strong>Faucet</strong> button (Circle Faucet).</p></div>
       <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">4</div><p>Enter amount, choose tokens (USDC ↔ EURC), click Swap.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div><p>Confirm transaction in your wallet – swap completes in seconds.</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div><p>Confirm approval (first time) and then the swap transaction.</p></div>
     </div>
   </div>
 </div>
 
 <script>
-  // ========== ARC TESTNET CONFIGURATION ==========
-  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a'; // verified EURC contract
+  // ========== CONFIGURATION ==========
+  // REPLACE THIS URL WITH YOUR DEPLOYED BACKEND URL
+  const BACKEND_URL = 'https://your-backend.vercel.app/api/swap';
+
+  // Official Arc Testnet contract addresses (ERC-20 interface)
+  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000'; // 6 decimals
+  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a'; // 6 decimals
   const ERC20_ABI = [
     "function balanceOf(address owner) view returns (uint256)",
     "function decimals() view returns (uint8)",
     "function symbol() view returns (string)",
-    "function allowance(address owner, address spender) view returns (uint256)",
-    "function approve(address spender, uint256 amount) returns (bool)"
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)"
   ];
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
+
   const EXPECTED_CHAIN_ID = 5042002;
 
   let userAddress = null;
@@ -234,7 +239,7 @@
   let currentSlippage = 0.5;
   let isProcessing = false;
   let userBalances = { USDC: 0, EURC: 0 };
-  let eurcContract = null;
+  let tokenContracts = {};
 
   // DOM elements
   const connectBtn = document.getElementById('connectWalletBtn');
@@ -277,22 +282,20 @@
     setTimeout(() => toast.classList.remove('toast-show'), 4000);
   }
 
-  faucetBtn.addEventListener('click', () => {
-    window.open('https://faucet.circle.com/', '_blank');
-    showToast('Opening Circle Faucet – request USDC/EURC on Arc Testnet');
-  });
+  faucetBtn.addEventListener('click', () => window.open('https://faucet.circle.com/', '_blank'));
   guideBtn.addEventListener('click', () => guideModal.classList.add('active'));
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION ==========
-  async function ensureArcNetwork(ethereumProvider) {
+  // ========== WALLET CONNECTION (recreate provider after network switch) ==========
+  async function ensureArcNetwork() {
+    if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
-      await ethereumProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
     } catch (switchError) {
       if (switchError.code === 4902) {
-        await ethereumProvider.request({ method: 'wallet_addEthereumChain', params: [{
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
           chainId: chainIdHex,
           chainName: 'Arc Testnet',
           nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
@@ -310,24 +313,27 @@
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts.length) throw new Error('No accounts');
       userAddress = accounts[0];
+      // Switch network first
+      await ensureArcNetwork();
+      // Then create provider
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      await ensureArcNetwork(window.ethereum);
       const network = await provider.getNetwork();
-      if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Please switch to Arc Testnet');
+      if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Network switch failed');
       connected = true;
       walletAddrSpan.innerText = `${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc`;
       statusLed.classList.add('bg-emerald-400'); statusLed.classList.remove('bg-gray-500');
       connectBtnText.innerText = 'Connected';
       copyBtn.classList.remove('hidden'); disconnectWalletBtn.classList.remove('hidden');
       showToast('Connected to Arc Testnet');
-      // Initialize EURC contract
-      eurcContract = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
+      // Initialize token contracts with signer
+      tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider.getSigner());
+      tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider.getSigner());
       await refreshUI();
     } catch (err) { showToast(err.message, true); }
   }
 
   function disconnect() {
-    connected = false; userAddress = null; provider = null; eurcContract = null;
+    connected = false; userAddress = null; provider = null;
     walletAddrSpan.innerText = '⚡ not connected';
     statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500');
     connectBtnText.innerText = 'Connect';
@@ -338,26 +344,22 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); } });
 
-  // ========== BALANCE FETCHING (native USDC + EURC) ==========
+  // ========== REAL BALANCE FETCHING (no mocks) ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
-
     try {
-      // Native USDC balance (gas token)
-      const nativeBalanceWei = await provider.getBalance(userAddress);
-      const nativeDecimals = 18; // USDC on Arc has 18 decimals
-      userBalances.USDC = parseFloat(ethers.utils.formatUnits(nativeBalanceWei, nativeDecimals));
-
-      // EURC balance (ERC-20)
-      const eurcBalanceWei = await eurcContract.balanceOf(userAddress);
-      const eurcDecimals = await eurcContract.decimals();
+      const usdcBalanceWei = await tokenContracts.USDC.balanceOf(userAddress);
+      const usdcDecimals = await tokenContracts.USDC.decimals(); // should be 6
+      userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcBalanceWei, usdcDecimals));
+      const eurcBalanceWei = await tokenContracts.EURC.balanceOf(userAddress);
+      const eurcDecimals = await tokenContracts.EURC.decimals(); // should be 6
       userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalanceWei, eurcDecimals));
-
-      console.log(`✅ Native USDC: ${userBalances.USDC}, EURC: ${userBalances.EURC}`);
+      console.log(`✅ Real balances: USDC = ${userBalances.USDC}, EURC = ${userBalances.EURC}`);
     } catch (err) {
-      console.warn("Balance fetch error – fallback to demo", err);
-      userBalances.USDC = 20;
-      userBalances.EURC = 20;
+      console.error("Balance fetch error:", err);
+      userBalances.USDC = 0;
+      userBalances.EURC = 0;
+      showToast("Failed to fetch balances", true);
     }
     updateBalanceUI();
     validateSwap();
@@ -373,23 +375,20 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION ==========
+  // ========== GAS ESTIMATION (no forced min gas) ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
       const feeData = await provider.getFeeData();
       let maxFeePerGas = feeData.maxFeePerGas || feeData.gasPrice;
       if (!maxFeePerGas) throw new Error("No fee data");
-      const minFeeWei = ethers.utils.parseUnits("160", "gwei");
-      if (maxFeePerGas.lt(minFeeWei)) maxFeePerGas = minFeeWei;
       const gasLimit = ethers.BigNumber.from(350000);
       const totalWei = gasLimit.mul(maxFeePerGas);
-      const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
+      const totalUSDC = ethers.utils.formatUnits(totalWei, 18); // gas paid in native USDC (18 decimals)
       gasEstimateSpan.innerText = `~${parseFloat(totalUSDC).toFixed(6)} USDC`;
     } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
 
-  // ========== QUOTE UPDATE ==========
   function updateQuote() {
     if (!connected) {
       receiveField.value = '';
@@ -412,7 +411,6 @@
     rateDynamicSpan.innerText = selectedFrom === 'USDC' ? '1 USDC ≈ 0.978 EURC' : '1 EURC ≈ 1.023 USDC';
   }
 
-  // ========== VALIDATION ==========
   function validateSwap() {
     if (!connected || isProcessing) {
       swapBtn.disabled = true;
@@ -423,7 +421,7 @@
     const isValid = !isNaN(amount) && amount > 0 && amount <= balance;
     swapBtn.disabled = !isValid;
     if (connected && !isProcessing) {
-      console.log(`Validate: amount=${amount}, balance=${balance}, isValid=${isValid}, disabled=${swapBtn.disabled}`);
+      console.log(`Validate: amount=${amount}, balance=${balance}, isValid=${isValid}`);
     }
   }
 
@@ -437,22 +435,7 @@
     lucide.createIcons();
   }
 
-  // ========== APPROVAL FOR EURC ==========
-  async function ensureAllowance(spenderAddress, amountInWei) {
-    if (selectedFrom !== "EURC") return true; // native USDC needs no approval
-
-    if (!spenderAddress) throw new Error("No spender address provided for approval");
-    const allowance = await eurcContract.allowance(userAddress, spenderAddress);
-    if (allowance.gte(amountInWei)) return true;
-
-    showToast("Approving EURC spend...");
-    const approveTx = await eurcContract.approve(spenderAddress, amountInWei);
-    await approveTx.wait();
-    showToast("Approval confirmed");
-    return true;
-  }
-
-  // ========== SWAP EXECUTION ==========
+  // ========== SWAP EXECUTION WITH APPROVAL ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -479,36 +462,46 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to prepare transaction');
 
-      // 2. If swapping from EURC, request approval for the swap contract (data.to)
-      let amountInWei;
-      if (selectedFrom === "EURC") {
-        const decimals = await eurcContract.decimals();
-        amountInWei = ethers.utils.parseUnits(amount.toString(), decimals);
-        await ensureAllowance(data.to, amountInWei);
-      } else if (selectedFrom === "USDC") {
-        // For native USDC, amount is in wei (18 decimals)
-        amountInWei = ethers.utils.parseUnits(amount.toString(), 18);
+      // 2. Token contract & decimals
+      const tokenAddress = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
+      const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
+      const decimals = await token.decimals(); // should be 6
+      const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
+      const spender = data.to; // the swap router
+
+      // 3. Check allowance
+      const allowance = await token.allowance(userAddress, spender);
+      if (allowance.lt(amountWei)) {
+        swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Approving token...</span>';
+        showToast(`Approving ${selectedFrom}...`, false);
+        const approveTx = await token.approve(spender, amountWei);
+        await approveTx.wait();
+        showToast(`Approval confirmed`, false);
       }
 
-      // 3. Build and send transaction
-      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
+      // 4. Send swap transaction
+      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm swap in wallet...</span>';
       const tx = {
         from: userAddress,
         to: data.to,
         data: data.data,
-        value: data.value || (selectedFrom === "USDC" ? amountInWei : '0x0'),
+        value: data.value,
         gasPrice: data.gasPrice,
         gasLimit: ethers.BigNumber.from(data.gas || 500000)
       };
       const sendTx = await provider.getSigner().sendTransaction(tx);
-      showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}... confirming`, false);
+      showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}...`, false);
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
       await sendTx.wait(1);
       showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo} completed.`, false);
       swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
       lucide.createIcons();
       await refreshUI();
-      setTimeout(() => { swapBtnText.innerHTML = "Swap tokens"; isProcessing = false; validateSwap(); }, 2000);
+      setTimeout(() => {
+        swapBtnText.innerHTML = "Swap tokens";
+        isProcessing = false;
+        validateSwap();
+      }, 2000);
     } catch (err) {
       console.error(err);
       let friendly = err.message;
@@ -611,7 +604,7 @@
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // ========== SPARKLINE ==========
+  // ========== SPARKLINE (cosmetic) ==========
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
