@@ -1,6 +1,5 @@
 import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
-import { privateKeyToAccount } from 'viem/accounts';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,13 +15,10 @@ export default async function handler(req, res) {
     if (!process.env.KIT_KEY) throw new Error("Missing KIT_KEY");
     if (!process.env.PRIVATE_KEY) throw new Error("Missing PRIVATE_KEY");
 
-    const { sourceChain, destChain, amount, recipient, token = "USDC" } = req.body;
-
+    const { sourceChain, destChain, amount, recipient } = req.body;
     if (!sourceChain || !destChain || !amount) {
-      return res.status(400).json({ error: "Missing required fields: sourceChain, destChain, amount" });
+      return res.status(400).json({ error: "Missing sourceChain, destChain, or amount" });
     }
-
-    // At least one chain must be Arc Testnet (as required)
     if (!sourceChain.includes("Arc") && !destChain.includes("Arc")) {
       return res.status(400).json({ error: "One side must be Arc Testnet" });
     }
@@ -32,30 +28,29 @@ export default async function handler(req, res) {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    // Bridge via Circle's App Kit (which internally uses CCTP)
-    // The recipient is the address on the destination chain (user's wallet or custom)
+    // Get the burn transaction (user will sign it)
     const result = await kit.bridge({
       from: { adapter, chain: sourceChain },
       to: { adapter, chain: destChain },
       amount: amount.toString(),
       recipient: recipient,
-      token: token,        // "USDC"
+      token: "USDC",
       config: { kitKey: process.env.KIT_KEY },
     });
 
-    console.log("Bridge result:", JSON.stringify(result, null, 2));
+    // Return transaction object for frontend to sign and send
+    const transaction = {
+      to: result.to,
+      data: result.data,
+      value: result.value || "0x0",
+      gas: result.gas || 500000,
+      gasPrice: result.gasPrice,
+    };
 
-    return res.status(200).json({
-      success: true,
-      transactionHash: result.transactionHash,
-      fullResult: result,
-    });
-
+    console.log("Bridge burn transaction prepared:", transaction);
+    return res.status(200).json(transaction);
   } catch (error) {
     console.error("Bridge error:", error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Bridge failed",
-    });
+    return res.status(500).json({ error: error.message || "Bridge preparation failed" });
   }
 }
