@@ -2,7 +2,6 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
-  // CORS for your frontend domain (adjust if needed)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,9 +11,11 @@ export default async function handler(req, res) {
 
   try {
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
+
     if (!tokenIn || !tokenOut || !amountIn) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
       throw new Error("Missing KIT_KEY or PRIVATE_KEY environment variables");
     }
@@ -24,7 +25,6 @@ export default async function handler(req, res) {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    // Use the exact chain identifier required by the SDK (Arc Testnet)
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
       tokenIn,
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
     const result = await kit.swap(params);
 
-    // Return the unsigned transaction object that the frontend will sign and send
+    // Return the transaction object exactly as the frontend expects
     const transaction = {
       to: result.to,
       data: result.data,
