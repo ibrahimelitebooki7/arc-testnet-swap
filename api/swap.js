@@ -3,7 +3,7 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
-  // Enable CORS for your frontend domain (update '*' with your actual domain in production)
+  // Set CORS headers to allow your frontend to call this API
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
