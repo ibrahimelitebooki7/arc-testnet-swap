@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Xroga · Arc Swap – REAL (Gas‑Aware)</title>
+  <title>Xroga · Arc Swap – FINAL WORKING</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -13,7 +13,6 @@
     body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .glass-panel { background: rgba(12,20,32,0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59,130,246,0.2); border-radius: 2rem; padding: 1.5rem; max-width: 480px; width: 100%; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 18px; color: white; font-size: 13px; z-index: 1000; pointer-events: none; transition: opacity 0.2s; }
-    .warning { background: rgba(245,158,11,0.2); border: 1px solid #f59e0b; color: #fbbf24; }
   </style>
 </head>
 <body>
@@ -52,7 +51,6 @@
         <button class="percentBtn" data-pct="0.75">75%</button>
         <button id="maxBtn" class="flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
       </div>
-      <div id="gasWarning" class="text-xs text-orange-300 mt-1 hidden">⚠️ Leave at least 0.01 USDC for gas fee</div>
     </div>
 
     <div class="flex justify-center -my-2 z-10 relative">
@@ -92,8 +90,8 @@
 </main>
 
 <script>
-  // ========== BACKEND URL (CHANGE TO YOUR DEPLOYED BACKEND) ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
+  // ========== BACKEND URL (UPDATE THIS) ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ change to your actual backend URL
 
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
@@ -109,7 +107,7 @@
   let selectedFrom = "USDC", selectedTo = "EURC", slippage = 0.5, processing = false;
   let balances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
-  let currentGasFee = 0; // in USDC
+  let currentGasFee = 0.007; // fallback
 
   // DOM elements
   const connectBtn = document.getElementById('connectBtn');
@@ -137,14 +135,13 @@
   const advToggle = document.getElementById('advToggle');
   const advPanel = document.getElementById('advPanel');
   const chevron = document.getElementById('chevron');
-  const gasWarning = document.getElementById('gasWarning');
 
   function showToast(msg, isError = false) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
     toast.style.borderColor = isError ? '#ef4444' : '#3b82f6';
     toast.classList.remove('opacity-0');
-    setTimeout(() => toast.classList.add('opacity-0'), 4000);
+    setTimeout(() => toast.classList.add('opacity-0'), 5000);
   }
 
   // Wallet & network
@@ -183,7 +180,6 @@
     } catch (err) { showToast(err.message, true); }
   }
 
-  // Balance fetch
   async function refreshBalances() {
     if (!connected) return;
     try {
@@ -194,6 +190,9 @@
       const eurcDec = await tokenContracts.EURC.decimals();
       balances.EURC = parseFloat(ethers.utils.formatUnits(eurcWei, eurcDec));
       console.log(`Balances: USDC=${balances.USDC}, EURC=${balances.EURC}`);
+      if (balances.USDC === 0 && balances.EURC === 0) {
+        showToast('No testnet tokens – use Faucet button', true);
+      }
     } catch (err) {
       console.error(err);
       showToast('Failed to fetch balances', true);
@@ -207,19 +206,17 @@
     toBalanceSpan.innerText = connected ? `${balances[selectedTo].toFixed(4)} ${selectedTo}` : '—';
   }
 
-  // Gas estimation
   async function updateGas() {
-    if (!connected) { gasSpan.innerText = '—'; currentGasFee = 0; return; }
+    if (!connected) { gasSpan.innerText = '—'; return; }
     try {
       const feeData = await provider.getFeeData();
       let gasPrice = feeData.gasPrice || feeData.maxFeePerGas;
       if (!gasPrice) throw new Error();
       const gasLimit = ethers.BigNumber.from(350000);
       const totalWei = gasLimit.mul(gasPrice);
-      const total = parseFloat(ethers.utils.formatUnits(totalWei, 18));
-      currentGasFee = total;
-      gasSpan.innerText = `~${total.toFixed(6)} USDC`;
-    } catch { gasSpan.innerText = 'Gas error'; currentGasFee = 0.007; } // fallback estimate
+      currentGasFee = parseFloat(ethers.utils.formatUnits(totalWei, 18));
+      gasSpan.innerText = `~${currentGasFee.toFixed(6)} USDC`;
+    } catch { gasSpan.innerText = 'Gas error'; currentGasFee = 0.007; }
   }
 
   function updateQuote() {
@@ -244,37 +241,33 @@
     if (!connected || processing) { swapButton.disabled = true; return; }
     const amount = parseFloat(amountInput.value);
     const balance = balances[selectedFrom] || 0;
-    // Ensure enough balance for swap + gas (if swapping USDC)
+    // For USDC swaps, leave gas buffer (if swapping USDC)
     let gasBuffer = (selectedFrom === 'USDC') ? currentGasFee + 0.001 : 0;
     let maxAllowed = balance - gasBuffer;
     if (maxAllowed < 0) maxAllowed = 0;
-    const isValid = amount > 0 && amount <= maxAllowed;
-    swapButton.disabled = !isValid;
-    if (selectedFrom === 'USDC' && balance > 0 && amount > maxAllowed && amount <= balance) {
-      gasWarning.classList.remove('hidden');
-      gasWarning.innerText = `⚠️ Leave at least ${gasBuffer.toFixed(6)} USDC for gas. Max swap: ${maxAllowed.toFixed(4)} USDC`;
-    } else {
-      gasWarning.classList.add('hidden');
-    }
+    swapButton.disabled = !(amount > 0 && amount <= maxAllowed);
   }
 
   async function refreshUI() {
-    if (connected) { await updateGas(); }
+    if (connected) await updateGas();
     updateQuote(); validateSwap();
     lucide.createIcons();
   }
 
   // ========== REAL SWAP EXECUTION ==========
   async function executeSwap() {
-    if (!connected) { showToast('Connect wallet', true); return; }
+    if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
-    const balance = balances[selectedFrom] || 0;
-    let gasBuffer = (selectedFrom === 'USDC') ? currentGasFee + 0.001 : 0;
-    if (amount + gasBuffer > balance) {
-      showToast(`Insufficient balance (need ~${gasBuffer.toFixed(6)} USDC for gas)`, true);
-      return;
+    // Check gas buffer
+    if (selectedFrom === 'USDC') {
+      let gasBuffer = currentGasFee + 0.001;
+      if (amount + gasBuffer > balances.USDC) {
+        showToast(`Insufficient balance: need ~${gasBuffer.toFixed(6)} USDC for gas`, true);
+        return;
+      }
     }
+    if (amount > balances[selectedFrom]) { showToast(`Insufficient ${selectedFrom} balance`, true); return; }
 
     processing = true;
     swapButton.disabled = true;
@@ -294,7 +287,9 @@
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Backend error');
+      if (!data.to || !data.data) throw new Error('Backend did not return a valid transaction object');
 
+      // Approval
       const tokenAddr = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddr, ERC20_ABI, provider.getSigner());
       const decimals = await token.decimals();
@@ -308,7 +303,8 @@
         showToast('Approval confirmed');
       }
 
-      swapButton.innerText = 'Confirm in wallet...';
+      // Swap transaction
+      swapButton.innerText = 'Confirm swap in wallet...';
       const tx = {
         from: userAddress,
         to: data.to,
@@ -331,7 +327,9 @@
       }, 2000);
     } catch (err) {
       console.error(err);
-      let msg = err.message.includes('user rejected') ? 'Transaction rejected' : err.message;
+      let msg = err.message;
+      if (msg.includes('user rejected')) msg = 'Transaction rejected';
+      else if (msg.includes('invalid address')) msg = 'Backend error: invalid transaction data';
       showToast(`❌ Swap failed: ${msg}`, true);
       swapButton.innerText = originalText;
       processing = false;
@@ -339,7 +337,7 @@
     }
   }
 
-  // Event handlers
+  // ========== EVENT HANDLERS ==========
   connectBtn.onclick = connectWallet;
   refreshBtn.onclick = async () => { if (connected) await refreshBalances(); await refreshUI(); };
   faucetBtn.onclick = () => window.open('https://faucet.circle.com/', '_blank');
@@ -357,8 +355,7 @@
       if (connected) {
         let p = parseFloat(btn.dataset.pct);
         let gasBuffer = (selectedFrom === 'USDC') ? currentGasFee + 0.001 : 0;
-        let maxAmt = balances[selectedFrom] - gasBuffer;
-        if (maxAmt < 0) maxAmt = 0;
+        let maxAmt = Math.max(0, balances[selectedFrom] - gasBuffer);
         amountInput.value = (maxAmt * p).toFixed(4);
         refreshUI();
       }
