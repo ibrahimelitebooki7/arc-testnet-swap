@@ -214,9 +214,8 @@
 </div>
 
 <script>
-  // ========== CONFIGURATION ==========
-  // REPLACE THIS URL WITH YOUR DEPLOYED BACKEND URL
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/';
+  // ========== CONFIGURATION – CORRECT BACKEND URL ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';  // ✅ FIXED
 
   // Official Arc Testnet contract addresses (ERC-20 interface)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000'; // 6 decimals
@@ -287,7 +286,7 @@
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION (recreate provider after network switch) ==========
+  // ========== WALLET CONNECTION ==========
   async function ensureArcNetwork() {
     if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
@@ -325,7 +324,6 @@
       connectBtnText.innerText = 'Connected';
       copyBtn.classList.remove('hidden'); disconnectWalletBtn.classList.remove('hidden');
       showToast('Connected to Arc Testnet');
-      // Initialize token contracts with signer
       tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider.getSigner());
       tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider.getSigner());
       await refreshUI();
@@ -349,10 +347,10 @@
     if (!connected || !provider) return;
     try {
       const usdcBalanceWei = await tokenContracts.USDC.balanceOf(userAddress);
-      const usdcDecimals = await tokenContracts.USDC.decimals(); // should be 6
+      const usdcDecimals = await tokenContracts.USDC.decimals();
       userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcBalanceWei, usdcDecimals));
       const eurcBalanceWei = await tokenContracts.EURC.balanceOf(userAddress);
-      const eurcDecimals = await tokenContracts.EURC.decimals(); // should be 6
+      const eurcDecimals = await tokenContracts.EURC.decimals();
       userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalanceWei, eurcDecimals));
       console.log(`✅ Real balances: USDC = ${userBalances.USDC}, EURC = ${userBalances.EURC}`);
     } catch (err) {
@@ -375,7 +373,7 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION (no forced min gas) ==========
+  // ========== GAS ESTIMATION ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
@@ -384,7 +382,7 @@
       if (!maxFeePerGas) throw new Error("No fee data");
       const gasLimit = ethers.BigNumber.from(350000);
       const totalWei = gasLimit.mul(maxFeePerGas);
-      const totalUSDC = ethers.utils.formatUnits(totalWei, 18); // gas paid in native USDC (18 decimals)
+      const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
       gasEstimateSpan.innerText = `~${parseFloat(totalUSDC).toFixed(6)} USDC`;
     } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
@@ -467,7 +465,7 @@
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
       const decimals = await token.decimals(); // should be 6
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to; // the swap router
+      const spender = data.to;
 
       // 3. Check allowance
       const allowance = await token.allowance(userAddress, spender);
@@ -604,7 +602,7 @@
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // ========== SPARKLINE (cosmetic) ==========
+  // ========== SPARKLINE ==========
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
