@@ -22,7 +22,7 @@
 
 <main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10">
   <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
-    <!-- Header -->
+    <!-- Header with Connect Wallet Button -->
     <div class="flex justify-between items-center mb-5">
       <div class="flex items-center gap-2">
         <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
@@ -34,7 +34,7 @@
       </button>
     </div>
 
-    <!-- Wallet status -->
+    <!-- Wallet Status Bar -->
     <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
       <div class="flex items-center gap-2">
         <div id="statusLed" class="w-2 h-2 rounded-full bg-gray-500"></div>
@@ -49,7 +49,7 @@
       <div class="text-[10px] text-emerald-400/80">● Arc Testnet</div>
     </div>
 
-    <!-- SWAP PANEL -->
+    <!-- Swap Panel -->
     <div id="swapPanel">
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-1.5">
@@ -110,9 +110,10 @@
 </main>
 
 <script>
-  // ========== CONFIGURATION ==========
-  const API_URL = '/api/swap';           // calls our backend
-  const EXPECTED_CHAIN_ID = 5042002;     // Arc Testnet
+  // --- Configuration ---
+  // Relative path works when frontend and backend are on the same Vercel deployment
+  const API_URL = '/api/swap';
+  const EXPECTED_CHAIN_ID = 5042002;
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
   const ERC20_ABI = [
@@ -129,7 +130,7 @@
   let swapTokenContracts = {};
   let swapIsProcessing = false;
 
-  // ----- Helpers -----
+  // --- Helper Functions ---
   function showToast(msg, isError = false) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
@@ -139,7 +140,7 @@
     console.log(msg);
   }
 
-  // ----- Wallet Connection (Arc Testnet) -----
+  // --- Wallet Connection (Arc Testnet) ---
   async function ensureArcNetwork(ethereumProvider) {
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
@@ -151,7 +152,7 @@
           chainName: 'Arc Testnet',
           nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
           rpcUrls: ['https://rpc.testnet.arc.network'],
-          blockExplorerUrls: ['https://explorer.testnet.arc.network']
+          blockExplorerUrls: ['https://testnet.arcscan.app']
         }] });
       } else throw switchError;
     }
@@ -195,7 +196,7 @@
     showToast('Disconnected');
   }
 
-  // ----- Token Contracts & Balances -----
+  // --- Token Contracts & Balances ---
   async function initSwapContracts() {
     if (!provider) return;
     swapTokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
@@ -220,7 +221,7 @@
     document.getElementById('swapToBalanceLabel').innerHTML = connected ? `${swapUserBalances[swapSelectedTo]?.toFixed(4) || 0} ${swapSelectedTo}` : '—';
   }
 
-  // ----- Quote & Gas -----
+  // --- Quote & Gas Updates ---
   function updateSwapQuote() {
     const amount = parseFloat(document.getElementById('swapAmountInput').value);
     if (!connected || isNaN(amount) || amount <= 0) {
@@ -228,6 +229,7 @@
       document.getElementById('swapRateDynamic').innerHTML = '1 USDC ≈ 0.978 EURC';
       return;
     }
+    // Static rate for demo. In production, you'd fetch this from your backend.
     const rate = (swapSelectedFrom === 'USDC' && swapSelectedTo === 'EURC') ? 0.978 : 1.023;
     const out = amount * rate;
     document.getElementById('swapReceiveField').value = out.toFixed(6);
@@ -264,7 +266,7 @@
     validateSwap();
   }
 
-  // ----- EXECUTE SWAP (calls backend, sends tx) -----
+  // --- Core Swap Execution ---
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(document.getElementById('swapAmountInput').value);
@@ -278,7 +280,7 @@
     btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing...</span>';
 
     try {
-      // 1. Get raw transaction from backend (Circle AppKit)
+      // Step 1: Ask your backend to prepare the swap transaction
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -298,7 +300,7 @@
       const txData = await response.json();
       if (!txData.to || !txData.data) throw new Error('Invalid transaction data from backend');
 
-      // 2. Send transaction with wallet confirmation
+      // Step 2: Ask the user to sign and send the transaction through their wallet
       btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
       const tx = {
         to: txData.to,
@@ -328,7 +330,7 @@
     }
   }
 
-  // ----- Event Listeners -----
+  // --- Event Listeners ---
   document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
   document.getElementById('disconnectBtn').addEventListener('click', disconnect);
   document.getElementById('copyAddressBtn').addEventListener('click', () => {
