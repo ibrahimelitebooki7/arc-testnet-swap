@@ -2,593 +2,356 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Xroga · Arc Swap 2026 (Debug + Reliable)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Xroga · Arc Swap 2026 – REAL</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     * { font-family: 'Inter', sans-serif; }
-    body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; overflow-x: hidden; margin: 0; }
-    .ambient-bg {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
-      background: radial-gradient(circle at 20% 30%, rgba(59,130,246,0.08), transparent 70%),
-                  radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08), transparent 70%);
-      animation: breathe 12s infinite alternate;
-    }
-    @keyframes breathe { 0% { opacity: 0.4; transform: scale(1); } 100% { opacity: 1; transform: scale(1.05); } }
-    .glass-panel {
-      background: rgba(12, 20, 32, 0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59, 130, 246, 0.2);
-      transition: all 0.25s ease; position: relative; overflow: hidden;
-    }
-    .glass-panel::after {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.15), transparent 70%);
-      opacity: 0; transition: opacity 0.2s; pointer-events: none;
-    }
-    .glass-panel:hover::after { opacity: 1; }
-    .morph-btn { position: relative; overflow: hidden; transition: all 0.2s; }
-    .toast-notify {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-      background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px;
-      padding: 8px 18px; color: white; font-size: 13px; font-weight: 500; z-index: 1000;
-      transition: transform 0.25s ease; pointer-events: none; white-space: nowrap;
-    }
-    .toast-show { transform: translateX(-50%) translateY(0); }
-    .token-modal, .guide-modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); z-index: 2000;
-      display: flex; align-items: flex-end; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s;
-    }
-    .token-modal.active, .guide-modal.active { opacity: 1; visibility: visible; }
-    .token-drawer, .guide-drawer {
-      background: #0f172fe6; backdrop-filter: blur(20px); border-radius: 32px 32px 0 0; width: 100%; max-width: 480px;
-      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); border-top: 1px solid #3b82f680;
-    }
-    .token-modal.active .token-drawer, .guide-modal.active .guide-drawer { transform: translateY(0); }
-    @media (max-width: 500px) { .glass-panel { padding: 1rem; } }
-    button, .token-trigger { touch-action: manipulation; }
-    .loading-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; display: inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .glass-panel { background: rgba(12,20,32,0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59,130,246,0.2); border-radius: 2rem; padding: 1.5rem; max-width: 480px; width: 100%; }
+    button { transition: all 0.2s; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 18px; color: white; font-size: 13px; z-index: 1000; pointer-events: none; white-space: nowrap; }
   </style>
 </head>
 <body>
-<div class="ambient-bg"></div>
-<div id="toastRoot" class="toast-notify">✨ Ready</div>
-
-<main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10 relative z-10">
-  <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
-    <!-- Header -->
+<div id="toast" class="toast opacity-0 transition-opacity">✨ Ready</div>
+<main>
+  <div class="glass-panel">
     <div class="flex justify-between items-center mb-5">
-      <div class="flex items-center gap-2">
-        <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
-        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">ARC testnet</span>
-      </div>
-      <div class="flex gap-2">
-        <button id="faucetBtn" class="flex items-center gap-1 bg-emerald-600/60 hover:bg-emerald-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-emerald-500/40">
-          <i data-lucide="droplet" class="w-3 h-3"></i> Faucet
-        </button>
-        <button id="guideBtn" class="flex items-center gap-1 bg-purple-600/60 hover:bg-purple-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-purple-500/40">
-          <i data-lucide="help-circle" class="w-3 h-3"></i> Guide
-        </button>
-        <button id="connectWalletBtn" class="flex items-center gap-1.5 bg-slate-800/70 hover:bg-slate-700/80 transition-all rounded-full px-3 py-1.5 text-sm font-medium text-slate-200 border border-slate-700">
-          <i data-lucide="wallet" class="w-3.5 h-3.5"></i><span id="connectBtnText">Connect</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Wallet status -->
-    <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
-      <div class="flex items-center gap-2">
-        <div id="statusLed" class="w-2 h-2 rounded-full bg-gray-500"></div>
-        <span id="walletAddressShort" class="text-slate-300 font-mono">⚡ not connected</span>
-        <button id="copyAddressBtn" class="hidden text-slate-400 hover:text-blue-400"><i data-lucide="copy" class="w-3 h-3"></i></button>
-        <button id="disconnectBtn" class="hidden text-slate-400 hover:text-red-400"><i data-lucide="log-out" class="w-3 h-3"></i></button>
-      </div>
-      <div id="networkHealth" class="text-[10px] text-emerald-400/80">● Arc live</div>
-    </div>
-
-    <!-- FROM card -->
-    <div class="glass-panel rounded-2xl p-4 mb-3">
-      <div class="flex justify-between text-xs text-slate-400 mb-1.5"><span>You pay</span><span id="fromBalanceLabel" class="font-mono">—</span></div>
-      <div class="flex items-center gap-3">
-        <button id="fromTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
-          <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i> <span id="fromTokenSymbol">USDC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
-        </button>
-        <input type="number" id="amountInput" value="1.0" step="0.5" class="bg-transparent text-right text-2xl font-medium text-white w-full outline-none">
-      </div>
-      <div class="flex justify-end gap-2 mt-2">
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.25">25%</button>
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.5">50%</button>
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.75">75%</button>
-        <button id="maxFromBtn" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/60 hover:bg-blue-600/50 flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
-      </div>
-    </div>
-
-    <!-- Flip button -->
-    <div class="flex justify-center -my-1 relative z-10">
-      <button id="flipSwapBtn" class="bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
-        <i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i>
+      <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
+      <button id="connectBtn" class="bg-slate-800 hover:bg-slate-700 rounded-full px-4 py-1.5 text-sm flex items-center gap-2">
+        <i data-lucide="wallet" class="w-4 h-4"></i><span id="connectText">Connect</span>
       </button>
     </div>
+    <div class="bg-black/30 rounded-2xl p-3 text-xs flex justify-between items-center mb-5">
+      <div class="flex gap-2 items-center">
+        <div id="led" class="w-2 h-2 rounded-full bg-gray-500"></div>
+        <span id="walletShort">⚡ not connected</span>
+      </div>
+      <button id="refreshBalanceBtn" class="text-blue-400 hover:text-blue-300 underline">⟳ Refresh balance</button>
+    </div>
 
-    <!-- TO card -->
-    <div class="glass-panel rounded-2xl p-4 mt-1 mb-3">
-      <div class="flex justify-between text-xs text-slate-400 mb-1.5"><span>You receive</span><span id="toBalanceLabel" class="font-mono">—</span></div>
-      <div class="flex items-center gap-3">
-        <button id="toTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
-          <i data-lucide="euro" class="w-4 h-4"></i> <span id="toTokenSymbol">EURC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
+    <!-- FROM -->
+    <div class="bg-black/20 rounded-2xl p-4 mb-3">
+      <div class="flex justify-between text-xs text-slate-400"><span>You pay</span><span id="fromBalance">—</span></div>
+      <div class="flex items-center gap-3 mt-1">
+        <button id="fromTokenBtn" class="bg-slate-800 rounded-full py-2 px-3 text-sm flex items-center gap-2">
+          <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i><span id="fromSymbol">USDC</span><i data-lucide="chevron-down" class="w-3 h-3"></i>
         </button>
-        <input type="text" id="receiveField" readonly disabled class="bg-transparent text-right text-2xl font-medium text-white/80 w-full outline-none">
+        <input type="number" id="amount" value="1.0" step="0.5" class="bg-transparent text-right text-2xl text-white w-full outline-none">
       </div>
-      <div class="flex justify-between mt-1 items-center"><span id="minReceiveHint" class="text-[11px] text-slate-400 font-mono">—</span></div>
-    </div>
-
-    <!-- Rate & AI -->
-    <div class="flex flex-wrap items-center justify-between gap-2 bg-black/20 rounded-xl px-3 py-2 text-xs text-slate-300 mb-2">
-      <div class="flex items-center gap-2"><i data-lucide="refresh-cw" class="w-3 h-3"></i><span id="rateDynamic">1 USDC ≈ 0.978 EURC</span><canvas id="sparklineCanvas" width="80" height="24" style="width:80px;height:24px" class="bg-black/30 rounded"></canvas></div>
-      <button id="aiSparkBtn" class="flex items-center gap-1 bg-purple-500/20 rounded-full px-2 py-1"><i data-lucide="sparkles" class="w-3 h-3 text-purple-300"></i> AI</button>
-    </div>
-
-    <!-- Advanced -->
-    <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
-      <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
-        <div class="flex gap-3 items-center"><i data-lucide="fuel" class="w-3 h-3"></i><span id="gasEstimate">Fetching gas...</span><div class="flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3"></i><span id="slippageValue">0.5%</span></div></div>
-        <i data-lucide="chevron-down" id="chevronAdv" class="w-4 h-4 transition-transform"></i>
-      </div>
-      <div id="advancedPanel" class="hidden mt-2 space-y-2 pt-2 border-t border-white/10">
-        <div class="flex justify-between"><span class="text-[11px]">MEV protection</span><label class="relative inline-flex"><input type="checkbox" id="mevToggle" class="sr-only peer"><div class="w-8 h-4 bg-slate-700 rounded-full peer-checked:bg-blue-600 after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div></label></div>
-        <div><span class="text-[11px]">Slippage custom</span><div class="flex gap-2 mt-1"><button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.1">0.1%</button><button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.5">0.5%</button><button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="1">1%</button></div></div>
+      <div class="flex justify-end gap-2 mt-2">
+        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.25">25%</button>
+        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.5">50%</button>
+        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.75">75%</button>
+        <button id="maxBtn" class="text-xs px-2 py-0.5 rounded-full bg-slate-700 flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
       </div>
     </div>
 
-    <!-- Swap button -->
-    <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
-      <span id="swapBtnText">Swap tokens</span>
-    </button>
+    <div class="flex justify-center -my-2 z-10 relative">
+      <button id="flipBtn" class="bg-slate-800 rounded-full p-2 border border-blue-500/40"><i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i></button>
+    </div>
+
+    <!-- TO -->
+    <div class="bg-black/20 rounded-2xl p-4 mt-1 mb-3">
+      <div class="flex justify-between text-xs text-slate-400"><span>You receive</span><span id="toBalance">—</span></div>
+      <div class="flex items-center gap-3 mt-1">
+        <button id="toTokenBtn" class="bg-slate-800 rounded-full py-2 px-3 text-sm flex items-center gap-2">
+          <i data-lucide="euro" class="w-4 h-4"></i><span id="toSymbol">EURC</span><i data-lucide="chevron-down" class="w-3 h-3"></i>
+        </button>
+        <input type="text" id="receiveField" readonly class="bg-transparent text-right text-2xl text-white/80 w-full outline-none">
+      </div>
+      <div class="flex justify-between mt-1"><span id="minReceive" class="text-xs text-slate-400">—</span></div>
+    </div>
+
+    <div class="bg-black/20 rounded-xl p-2 text-xs flex justify-between items-center mb-4">
+      <div class="flex gap-2"><i data-lucide="refresh-cw" class="w-3 h-3"></i><span id="rateDisplay">1 USDC ≈ 0.978 EURC</span></div>
+      <button id="aiBtn" class="bg-purple-500/20 rounded-full px-2 py-0.5 flex items-center gap-1"><i data-lucide="sparkles" class="w-3 h-3"></i> AI</button>
+    </div>
+
+    <div class="bg-black/20 rounded-xl p-2 mb-4">
+      <div class="flex justify-between cursor-pointer" id="advToggle">
+        <div class="flex gap-3"><i data-lucide="fuel" class="w-3 h-3"></i><span id="gasEstimate">Fetching gas...</span><i data-lucide="gauge" class="w-3 h-3 ml-2"></i><span id="slippageVal">0.5%</span></div>
+        <i data-lucide="chevron-down" id="chevron" class="w-4 h-4"></i>
+      </div>
+      <div id="advPanel" class="hidden mt-2 pt-2 border-t border-white/10">
+        <div class="flex justify-between"><span class="text-xs">MEV protection</span><label><input type="checkbox" id="mev" class="toggle"></label></div>
+        <div class="mt-1"><span class="text-xs">Slippage</span><div class="flex gap-2 mt-1"><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="0.1">0.1%</button><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="0.5">0.5%</button><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="1">1%</button></div></div>
+      </div>
+    </div>
+
+    <button id="swapBtn" disabled class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 rounded-2xl py-3.5 font-bold text-white">Swap tokens</button>
   </div>
 </main>
 
-<!-- Token modal -->
-<div id="tokenModal" class="token-modal"><div class="token-drawer p-5"><div class="flex justify-between mb-4"><h3 class="text-white font-semibold">Select a token</h3><button id="closeModalBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div><input type="text" id="tokenSearch" placeholder="Search..." class="w-full bg-slate-800/80 border border-slate-700 rounded-full px-4 py-2 text-white text-sm mb-3"><div id="tokenList" class="max-h-96 overflow-y-auto space-y-2"></div></div></div>
-
-<!-- Guide modal -->
-<div id="guideModal" class="guide-modal"><div class="guide-drawer p-5"><div class="flex justify-between mb-4"><h3 class="text-white font-semibold flex gap-2"><i data-lucide="help-circle"></i> How to Swap</h3><button id="closeGuideBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div><div class="space-y-4 text-slate-300 text-sm"><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">1</div><p>Connect wallet (MetaMask/Rabby).</p></div><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">2</div><p>Get test tokens from <strong>Faucet</strong> (Circle Faucet).</p></div><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">3</div><p>Enter amount, confirm swap.</p></div></div></div></div>
-
 <script>
-  // ========== CONFIGURATION ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ Replace with your actual backend URL
+  // ========== CONFIGURATION – CHANGE THIS URL ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ Replace with YOUR backend URL
+
+  // Official Arc Testnet addresses
+  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+  const ERC20_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function approve(address,uint256) returns (bool)",
+    "function allowance(address,address) view returns (uint256)"
+  ];
   const EXPECTED_CHAIN_ID = 5042002;
 
-  // Official Arc Testnet contract addresses
-  const TOKENS = {
-    USDC: { address: '0x3600000000000000000000000000000000000000', decimals: 6, symbol: 'USDC', icon: 'circle-dollar-sign' },
-    EURC: { address: '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a', decimals: 6, symbol: 'EURC', icon: 'euro' }
-  };
-
-  const ERC20_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function decimals() view returns (uint8)",
-    "function symbol() view returns (string)",
-    "function approve(address spender, uint256 amount) returns (bool)",
-    "function allowance(address owner, address spender) view returns (uint256)"
-  ];
-
-  // ========== GLOBAL STATE ==========
   let userAddress = null, provider = null, connected = false;
-  let selectedFrom = "USDC", selectedTo = "EURC", currentSlippage = 0.5, isProcessing = false;
-  let userBalances = { USDC: 0, EURC: 0 };
+  let selectedFrom = "USDC", selectedTo = "EURC", slippage = 0.5, processing = false;
+  let balances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements
-  const connectBtn = document.getElementById('connectWalletBtn');
-  const connectBtnText = document.getElementById('connectBtnText');
-  const walletAddrSpan = document.getElementById('walletAddressShort');
-  const statusLed = document.getElementById('statusLed');
-  const amountInput = document.getElementById('amountInput');
+  // DOM
+  const connectBtn = document.getElementById('connectBtn');
+  const connectText = document.getElementById('connectText');
+  const walletShort = document.getElementById('walletShort');
+  const led = document.getElementById('led');
+  const amountInput = document.getElementById('amount');
   const receiveField = document.getElementById('receiveField');
-  const fromBalanceLabel = document.getElementById('fromBalanceLabel');
-  const toBalanceLabel = document.getElementById('toBalanceLabel');
-  const minReceiveHint = document.getElementById('minReceiveHint');
-  const rateDynamicSpan = document.getElementById('rateDynamic');
-  const slippageValueSpan = document.getElementById('slippageValue');
-  const swapBtn = document.getElementById('swapActionBtn');
-  const swapBtnText = document.getElementById('swapBtnText');
-  const flipBtn = document.getElementById('flipSwapBtn');
-  const maxBtn = document.getElementById('maxFromBtn');
-  const fromTokenBtn = document.getElementById('fromTokenBtn');
-  const toTokenBtn = document.getElementById('toTokenBtn');
-  const fromTokenSymbolSpan = document.getElementById('fromTokenSymbol');
-  const toTokenSymbolSpan = document.getElementById('toTokenSymbol');
-  const tokenModal = document.getElementById('tokenModal');
-  const guideModal = document.getElementById('guideModal');
-  const advancedToggle = document.getElementById('advancedToggle');
-  const advancedPanel = document.getElementById('advancedPanel');
-  const chevronAdv = document.getElementById('chevronAdv');
-  const copyBtn = document.getElementById('copyAddressBtn');
-  const disconnectWalletBtn = document.getElementById('disconnectBtn');
-  const gasEstimateSpan = document.getElementById('gasEstimate');
-  const faucetBtn = document.getElementById('faucetBtn');
-  const guideBtn = document.getElementById('guideBtn');
-  const closeGuideBtn = document.getElementById('closeGuideBtn');
+  const fromBalanceSpan = document.getElementById('fromBalance');
+  const toBalanceSpan = document.getElementById('toBalance');
+  const minReceiveSpan = document.getElementById('minReceive');
+  const rateSpan = document.getElementById('rateDisplay');
+  const gasSpan = document.getElementById('gasEstimate');
+  const slippageSpan = document.getElementById('slippageVal');
+  const swapButton = document.getElementById('swapBtn');
+  const refreshBtn = document.getElementById('refreshBalanceBtn');
 
-  // ========== UTILITIES ==========
   function showToast(msg, isError = false) {
-    const toast = document.getElementById('toastRoot');
+    const toast = document.getElementById('toast');
     toast.textContent = msg;
-    toast.classList.add('toast-show');
     toast.style.borderColor = isError ? '#ef4444' : '#3b82f6';
-    setTimeout(() => toast.classList.remove('toast-show'), 4000);
-    console.log(isError ? `❌ ${msg}` : `✅ ${msg}`);
+    toast.classList.remove('opacity-0');
+    setTimeout(() => toast.classList.add('opacity-0'), 4000);
   }
 
   // ========== WALLET & NETWORK ==========
   async function ensureArcNetwork() {
-    if (!window.ethereum) throw new Error("No wallet provider");
-    const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
+    const hex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-    } catch (switchError) {
-      if (switchError.code === 4902) {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hex }] });
+    } catch (e) {
+      if (e.code === 4902) {
         await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
-          chainId: chainIdHex,
-          chainName: 'Arc Testnet',
-          nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-          rpcUrls: ['https://rpc.testnet.arc.network'],
-          blockExplorerUrls: ['https://explorer.testnet.arc.network']
+          chainId: hex, chainName: 'Arc Testnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+          rpcUrls: ['https://rpc.testnet.arc.network'], blockExplorerUrls: ['https://explorer.testnet.arc.network']
         }]});
-      } else throw switchError;
+      } else throw e;
     }
   }
 
   async function connectWallet() {
     if (!window.ethereum) { showToast('Install MetaMask or Rabby', true); return; }
     try {
-      showToast('Connecting...');
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts.length) throw new Error('No accounts');
       userAddress = accounts[0];
-      console.log('Wallet address:', userAddress);
       await ensureArcNetwork();
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      const network = await provider.getNetwork();
-      if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Network switch failed');
+      const net = await provider.getNetwork();
+      if (net.chainId !== EXPECTED_CHAIN_ID) throw new Error('Wrong network');
       connected = true;
-      walletAddrSpan.innerText = `${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc`;
-      statusLed.classList.add('bg-emerald-400'); statusLed.classList.remove('bg-gray-500');
-      connectBtnText.innerText = 'Connected';
-      copyBtn.classList.remove('hidden'); disconnectWalletBtn.classList.remove('hidden');
-      // Init token contracts with signer
-      tokenContracts.USDC = new ethers.Contract(TOKENS.USDC.address, ERC20_ABI, provider.getSigner());
-      tokenContracts.EURC = new ethers.Contract(TOKENS.EURC.address, ERC20_ABI, provider.getSigner());
+      walletShort.innerText = `${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc`;
+      led.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      connectText.innerText = 'Connected';
+      tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider.getSigner());
+      tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider.getSigner());
+      await refreshBalances();
       await refreshUI();
-      showToast('Connected to Arc Testnet');
-    } catch (err) {
-      console.error('Connect error:', err);
-      showToast(err.message, true);
-    }
+    } catch (err) { showToast(err.message, true); }
   }
 
-  function disconnect() {
-    connected = false; userAddress = null; provider = null;
-    walletAddrSpan.innerText = '⚡ not connected';
-    statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500');
-    connectBtnText.innerText = 'Connect';
-    copyBtn.classList.add('hidden'); disconnectWalletBtn.classList.add('hidden');
-    refreshUI();
-    showToast('Disconnected');
-  }
-
-  copyBtn.addEventListener('click', () => {
-    if (userAddress) {
-      navigator.clipboard.writeText(userAddress);
-      showToast('Copied address');
-    }
-  });
-
-  // ========== BALANCE & GAS ==========
-  async function fetchBalances() {
-    if (!connected || !provider) return;
+  // ========== REAL BALANCE FETCH ==========
+  async function refreshBalances() {
+    if (!connected) return;
     try {
       const usdcWei = await tokenContracts.USDC.balanceOf(userAddress);
-      userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcWei, TOKENS.USDC.decimals));
+      const usdcDec = await tokenContracts.USDC.decimals();
+      balances.USDC = parseFloat(ethers.utils.formatUnits(usdcWei, usdcDec));
       const eurcWei = await tokenContracts.EURC.balanceOf(userAddress);
-      userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcWei, TOKENS.EURC.decimals));
-      console.log(`Balances: USDC=${userBalances.USDC}, EURC=${userBalances.EURC}`);
+      const eurcDec = await tokenContracts.EURC.decimals();
+      balances.EURC = parseFloat(ethers.utils.formatUnits(eurcWei, eurcDec));
+      console.log(`✅ Balances: USDC=${balances.USDC}, EURC=${balances.EURC}`);
+      showToast(`USDC: ${balances.USDC}  |  EURC: ${balances.EURC}`);
     } catch (err) {
-      console.error("Balance fetch error", err);
-      userBalances.USDC = 0; userBalances.EURC = 0;
-      showToast("Failed to fetch balances", true);
+      console.error('Balance fetch error', err);
+      showToast('Failed to fetch balances – check console', true);
+      balances.USDC = 0; balances.EURC = 0;
     }
     updateBalanceUI();
     validateSwap();
   }
 
   function updateBalanceUI() {
-    if (!connected) {
-      fromBalanceLabel.innerText = '—';
-      toBalanceLabel.innerText = '—';
-      return;
-    }
-    fromBalanceLabel.innerText = `${(userBalances[selectedFrom] || 0).toFixed(4)} ${selectedFrom}`;
-    toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
+    fromBalanceSpan.innerText = connected ? `${balances[selectedFrom].toFixed(4)} ${selectedFrom}` : '—';
+    toBalanceSpan.innerText = connected ? `${balances[selectedTo].toFixed(4)} ${selectedTo}` : '—';
   }
 
-  async function updateGasFee() {
-    if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
+  async function updateGas() {
+    if (!connected) { gasSpan.innerText = '—'; return; }
     try {
-      const feeData = await provider.getFeeData();
-      let maxFee = feeData.maxFeePerGas || feeData.gasPrice;
-      if (!maxFee) throw new Error();
-      const gasLimit = ethers.BigNumber.from(350000);
-      const totalWei = gasLimit.mul(maxFee);
-      // On Arc testnet, native token is USDC (18 decimals) – adjust if needed
-      const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
-      gasEstimateSpan.innerText = `~${parseFloat(totalUSDC).toFixed(6)} USDC`;
-    } catch (err) {
-      gasEstimateSpan.innerText = "Gas error";
-    }
+      const fee = await provider.getFeeData();
+      let gasPrice = fee.gasPrice || fee.maxFeePerGas;
+      if (!gasPrice) throw new Error();
+      const totalWei = ethers.BigNumber.from(350000).mul(gasPrice);
+      const total = ethers.utils.formatUnits(totalWei, 18);
+      gasSpan.innerText = `~${parseFloat(total).toFixed(6)} USDC`;
+    } catch { gasSpan.innerText = 'Gas error'; }
   }
 
-  // ========== QUOTE & DISPLAY (simulated – replace with real backend quote if desired) ==========
   function updateQuote() {
     if (!connected) {
-      receiveField.value = '';
-      minReceiveHint.innerText = '—';
-      rateDynamicSpan.innerText = '1 USDC ≈ 0.978 EURC';
+      receiveField.value = ''; minReceiveSpan.innerText = '—'; rateSpan.innerText = '1 USDC ≈ 0.978 EURC';
       return;
     }
     const amount = parseFloat(amountInput.value);
-    if (isNaN(amount) || amount <= 0) {
-      receiveField.value = '';
-      minReceiveHint.innerText = '—';
-      return;
-    }
-    // Simulated rate – actual swap will use real on-chain rate
+    if (isNaN(amount) || amount <= 0) { receiveField.value = ''; minReceiveSpan.innerText = '—'; return; }
     const rate = (selectedFrom === 'USDC' && selectedTo === 'EURC') ? 0.978 : (selectedFrom === 'EURC' && selectedTo === 'USDC') ? 1.023 : 1;
     const out = amount * rate;
-    const minOut = out * (1 - currentSlippage/100);
+    const minOut = out * (1 - slippage/100);
     receiveField.value = out.toFixed(6);
-    minReceiveHint.innerText = `min receive: ${minOut.toFixed(6)} ${selectedTo}`;
-    rateDynamicSpan.innerText = selectedFrom === 'USDC' ? '1 USDC ≈ 0.978 EURC' : '1 EURC ≈ 1.023 USDC';
+    minReceiveSpan.innerText = `min receive: ${minOut.toFixed(6)} ${selectedTo}`;
+    rateSpan.innerText = selectedFrom === 'USDC' ? '1 USDC ≈ 0.978 EURC' : '1 EURC ≈ 1.023 USDC';
   }
 
   function validateSwap() {
-    if (!connected || isProcessing) {
-      swapBtn.disabled = true;
-      return;
-    }
+    if (!connected || processing) { swapButton.disabled = true; return; }
     const amount = parseFloat(amountInput.value);
-    const balance = userBalances[selectedFrom] || 0;
-    swapBtn.disabled = !(amount > 0 && amount <= balance);
+    const balance = balances[selectedFrom] || 0;
+    swapButton.disabled = !(amount > 0 && amount <= balance);
+    if (!swapButton.disabled) console.log(`✅ Button enabled, amount=${amount}, balance=${balance}`);
+    else console.log(`❌ Button disabled, amount=${amount}, balance=${balance}`);
   }
 
   async function refreshUI() {
-    if (connected) {
-      await fetchBalances();
-      await updateGasFee();
-    }
-    updateQuote();
-    validateSwap();
+    if (connected) { await updateGas(); }
+    updateQuote(); validateSwap();
     lucide.createIcons();
   }
 
-  // ========== CORE SWAP LOGIC (with approval + wallet confirmation) ==========
+  // ========== SWAP (REAL) ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
-    if (amount > userBalances[selectedFrom]) { showToast(`Insufficient ${selectedFrom} balance`, true); return; }
+    if (amount > balances[selectedFrom]) { showToast(`Insufficient ${selectedFrom} balance`, true); return; }
 
-    isProcessing = true;
-    swapBtn.disabled = true;
-    swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
-    lucide.createIcons();
+    processing = true;
+    swapButton.disabled = true;
+    const originalText = swapButton.innerText;
+    swapButton.innerText = 'Preparing swap...';
 
     try {
-      // ----- 1. Get swap transaction from backend -----
-      console.log(`Requesting swap: ${amount} ${selectedFrom} -> ${selectedTo}`);
+      // 1. Call backend
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenIn: selectedFrom,
-          tokenOut: selectedTo,
-          amountIn: amount.toString(),
-          walletAddress: userAddress
-        })
+        body: JSON.stringify({ tokenIn: selectedFrom, tokenOut: selectedTo, amountIn: amount.toString(), walletAddress: userAddress })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Backend error');
-      console.log('Backend transaction data:', data);
 
-      // ----- 2. Approve if necessary -----
-      const tokenAddr = TOKENS[selectedFrom].address;
+      // 2. Approval
+      const tokenAddr = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddr, ERC20_ABI, provider.getSigner());
-      const decimals = TOKENS[selectedFrom].decimals;
+      const decimals = await token.decimals();
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to; // swap router address
-
+      const spender = data.to;
       const allowance = await token.allowance(userAddress, spender);
-      console.log(`Current allowance: ${ethers.utils.formatUnits(allowance, decimals)} ${selectedFrom}`);
-
       if (allowance.lt(amountWei)) {
-        swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Approving token...</span>';
-        showToast(`Please approve ${selectedFrom} in your wallet`, false);
+        swapButton.innerText = 'Approving token...';
         const approveTx = await token.approve(spender, amountWei);
-        console.log('Approval tx hash:', approveTx.hash);
         await approveTx.wait();
-        console.log('Approval confirmed');
-        showToast(`Approval successful`, false);
+        showToast('Approval confirmed');
       }
 
-      // ----- 3. Send swap transaction (wallet confirmation popup) -----
-      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm swap in wallet...</span>';
+      // 3. Send swap transaction (wallet popup)
+      swapButton.innerText = 'Confirm in wallet...';
       const tx = {
         from: userAddress,
         to: data.to,
         data: data.data,
-        value: data.value || '0x0',
-        gasPrice: ethers.BigNumber.from(data.gasPrice),
+        value: data.value,
+        gasPrice: data.gasPrice,
         gasLimit: ethers.BigNumber.from(data.gas || 500000)
       };
-      console.log('Sending swap transaction:', tx);
       const sendTx = await provider.getSigner().sendTransaction(tx);
-      showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}...`, false);
-      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on-chain...</span>';
-      const receipt = await sendTx.wait(1);
-      console.log('Swap confirmed in block:', receipt.blockNumber);
-      showToast(`✅ Swap successful! ${selectedFrom} → ${selectedTo}`, false);
-
-      // ----- 4. Refresh UI and finalize -----
-      swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
-      lucide.createIcons();
-      await refreshUI();
-      setTimeout(() => {
-        swapBtnText.innerHTML = "Swap tokens";
-        isProcessing = false;
-        validateSwap();
-      }, 2000);
+      showToast(`Swap submitted: ${sendTx.hash.slice(0,10)}...`);
+      swapButton.innerText = 'Confirming...';
+      await sendTx.wait(1);
+      showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo}`);
+      swapButton.innerText = 'Done!';
+      await refreshBalances();
+      setTimeout(() => { swapButton.innerText = originalText; processing = false; validateSwap(); }, 2000);
     } catch (err) {
-      console.error('Swap execution error:', err);
-      let friendly = err.message.includes('user rejected') ? 'Transaction rejected in wallet.' : err.message;
-      showToast(`❌ Swap failed: ${friendly}`, true);
-      swapBtnText.innerHTML = "Swap tokens";
-      isProcessing = false;
+      console.error(err);
+      let msg = err.message.includes('user rejected') ? 'Transaction rejected' : err.message;
+      showToast(`❌ Swap failed: ${msg}`, true);
+      swapButton.innerText = originalText;
+      processing = false;
       validateSwap();
     }
   }
 
-  // ========== UI EVENT HANDLERS ==========
-  flipBtn.addEventListener('click', () => {
+  // ========== EVENT LISTENERS ==========
+  connectBtn.onclick = connectWallet;
+  refreshBtn.onclick = async () => { await refreshBalances(); await refreshUI(); };
+  document.getElementById('flipBtn').onclick = () => {
     let tmp = selectedFrom; selectedFrom = selectedTo; selectedTo = tmp;
-    fromTokenSymbolSpan.innerText = selectedFrom; toTokenSymbolSpan.innerText = selectedTo;
-    fromTokenBtn.querySelector('i').setAttribute('data-lucide', TOKENS[selectedFrom].icon);
-    toTokenBtn.querySelector('i').setAttribute('data-lucide', TOKENS[selectedTo].icon);
-    lucide.createIcons();
+    document.getElementById('fromSymbol').innerText = selectedFrom;
+    document.getElementById('toSymbol').innerText = selectedTo;
     refreshUI();
-  });
+  };
+  document.getElementById('maxBtn').onclick = () => { if (connected) amountInput.value = balances[selectedFrom]; refreshUI(); };
+  document.querySelectorAll('.percentBtn').forEach(btn => btn.onclick = () => { if (connected) { let p = parseFloat(btn.dataset.pct); amountInput.value = (balances[selectedFrom] * p).toFixed(6); refreshUI(); } });
+  amountInput.oninput = refreshUI;
+  swapButton.onclick = executeSwap;
+  document.querySelectorAll('.slippagePreset').forEach(btn => btn.onclick = () => { slippage = parseFloat(btn.dataset.slip); slippageSpan.innerText = `${slippage}%`; refreshUI(); });
+  document.getElementById('advToggle').onclick = () => { const p = document.getElementById('advPanel'); p.classList.toggle('hidden'); document.getElementById('chevron').style.transform = p.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)'; };
+  document.getElementById('aiBtn').onclick = () => showToast(`✨ AI: gas ${gasSpan.innerText}, use ${slippage}% slippage`);
 
-  maxBtn.addEventListener('click', () => {
-    if (connected) {
-      amountInput.value = userBalances[selectedFrom];
-      refreshUI();
-    } else {
-      showToast("Connect wallet first", true);
-    }
-  });
-
-  document.querySelectorAll('.percentBtn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (connected) {
-        let p = parseFloat(btn.dataset.percent);
-        amountInput.value = (userBalances[selectedFrom] * p).toFixed(6);
-        refreshUI();
-      }
-    });
-  });
-
-  amountInput.addEventListener('input', () => { updateQuote(); validateSwap(); });
-  swapBtn.addEventListener('click', executeSwap);
-
-  document.querySelectorAll('.slippagePreset').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentSlippage = parseFloat(btn.dataset.slippage);
-      slippageValueSpan.innerText = `${currentSlippage}%`;
-      refreshUI();
-      showToast(`Slippage set to ${currentSlippage}%`);
-    });
-  });
-
-  advancedToggle.addEventListener('click', () => {
-    advancedPanel.classList.toggle('hidden');
-    chevronAdv.style.transform = advancedPanel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-  });
-
-  aiSparkBtn.addEventListener('click', () => showToast(`✨ AI insight: Network fees are ${gasEstimateSpan.innerText}. Use 0.5% slippage.`));
-
-  // Token selector modal
-  const tokenList = [TOKENS.USDC, TOKENS.EURC];
+  // Token selector modal (simple)
+  const tokenList = [{ sym:"USDC", name:"USD Coin", icon:"circle-dollar-sign" }, { sym:"EURC", name:"Euro Coin", icon:"euro" }];
   function renderTokenModal(side) {
-    let search = document.getElementById('tokenSearch').value.toLowerCase();
-    let filtered = tokenList.filter(t => t.symbol.toLowerCase().includes(search));
-    document.getElementById('tokenList').innerHTML = filtered.map(t => `
-      <div class="token-item flex justify-between p-3 rounded-xl hover:bg-slate-700/50 cursor-pointer" data-symbol="${t.symbol}" data-side="${side}">
-        <div class="flex gap-3"><i data-lucide="${t.icon}" class="w-6 h-6"></i><div><div class="text-white">${t.symbol}</div><div class="text-xs text-slate-400">${t.name}</div></div></div>
-        <div class="text-white text-sm">${(userBalances[t.symbol] || 0).toFixed(4)}</div>
-      </div>`).join('');
+    let html = tokenList.map(t => `<div class="token-item flex justify-between p-3 rounded-xl hover:bg-slate-700/50 cursor-pointer" data-sym="${t.sym}" data-side="${side}"><div class="flex gap-3"><i data-lucide="${t.icon}" class="w-6 h-6"></i><div><div>${t.sym}</div><div class="text-xs">${t.name}</div></div></div><div class="text-sm">${(balances[t.sym]||0).toFixed(4)}</div></div>`).join('');
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/80 backdrop-blur flex items-end justify-center z-50';
+    modal.innerHTML = `<div class="bg-slate-900 rounded-t-2xl w-full max-w-md p-5 transform transition-transform"><div class="flex justify-between mb-4"><h3 class="text-white font-semibold">Select token</h3><button class="closeModal"><i data-lucide="x" class="w-5 h-5"></i></button></div><div class="space-y-2 max-h-96 overflow-auto">${html}</div></div>`;
+    document.body.appendChild(modal);
     lucide.createIcons();
-    document.querySelectorAll('.token-item').forEach(el => {
-      el.addEventListener('click', () => {
-        let sym = el.dataset.symbol;
-        if (el.dataset.side === 'from') {
-          selectedFrom = sym;
-          fromTokenSymbolSpan.innerText = sym;
-          fromTokenBtn.querySelector('i').setAttribute('data-lucide', TOKENS[sym].icon);
-        } else {
-          selectedTo = sym;
-          toTokenSymbolSpan.innerText = sym;
-          toTokenBtn.querySelector('i').setAttribute('data-lucide', TOKENS[sym].icon);
-        }
-        lucide.createIcons();
-        tokenModal.classList.remove('active');
-        refreshUI();
-      });
+    modal.querySelector('.closeModal').onclick = () => modal.remove();
+    modal.querySelectorAll('.token-item').forEach(el => {
+      el.onclick = () => {
+        const sym = el.dataset.sym;
+        if (el.dataset.side === 'from') { selectedFrom = sym; document.getElementById('fromSymbol').innerText = sym; }
+        else { selectedTo = sym; document.getElementById('toSymbol').innerText = sym; }
+        modal.remove(); refreshUI();
+      };
     });
   }
-
-  fromTokenBtn.addEventListener('click', () => {
-    tokenModal.classList.add('active');
-    renderTokenModal('from');
-  });
-  toTokenBtn.addEventListener('click', () => {
-    tokenModal.classList.add('active');
-    renderTokenModal('to');
-  });
-  document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
-  document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
+  document.getElementById('fromTokenBtn').onclick = () => renderTokenModal('from');
+  document.getElementById('toTokenBtn').onclick = () => renderTokenModal('to');
 
   // Sparkline (cosmetic)
-  let sparklineData = Array(20).fill(0.978);
-  let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
-  function updateSparkline() {
-    let newVal = (selectedFrom === 'USDC' ? 0.978 : 1.023) + (Math.random() - 0.5) * 0.002;
-    sparklineData.push(newVal);
-    if (sparklineData.length > 30) sparklineData.shift();
+  const canvas = document.createElement('canvas'); canvas.width = 80; canvas.height = 24; canvas.className = 'bg-black/30 rounded ml-2'; document.querySelector('.flex.items-center.gap-2').appendChild(canvas);
+  let sparkCtx = canvas.getContext('2d');
+  let sparkData = Array(20).fill(0.978);
+  setInterval(() => {
+    if (!connected) return;
+    let newVal = (selectedFrom === 'USDC' ? 0.978 : 1.023) + (Math.random() - 0.5)*0.002;
+    sparkData.push(newVal); if(sparkData.length>30) sparkData.shift();
     sparkCtx.clearRect(0,0,80,24);
-    sparkCtx.beginPath();
-    sparkCtx.strokeStyle = '#60a5fa';
-    sparkCtx.lineWidth = 1.5;
-    let min = Math.min(...sparklineData), max = Math.max(...sparklineData);
-    for (let i = 0; i < sparklineData.length; i++) {
-      let x = (i/sparklineData.length)*80;
-      let y = 24 - ((sparklineData[i]-min)/(max-min||1))*20;
-      if (i===0) sparkCtx.moveTo(x,y);
-      else sparkCtx.lineTo(x,y);
-    }
+    sparkCtx.beginPath(); sparkCtx.strokeStyle='#60a5fa'; sparkCtx.lineWidth=1.5;
+    let min=Math.min(...sparkData), max=Math.max(...sparkData);
+    for(let i=0;i<sparkData.length;i++){ let x=i/sparkData.length*80; let y=24-((sparkData[i]-min)/(max-min||1))*20; if(i===0) sparkCtx.moveTo(x,y); else sparkCtx.lineTo(x,y); }
     sparkCtx.stroke();
-  }
-  setInterval(() => { if (connected) updateSparkline(); }, 4000);
-
-  // Chain / account listeners
-  if (window.ethereum) {
-    window.ethereum.on('accountsChanged', (accs) => {
-      if (!accs.length) disconnect();
-      else {
-        userAddress = accs[0];
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        refreshUI();
-      }
-    });
-    window.ethereum.on('chainChanged', () => window.location.reload());
-  }
-
-  connectBtn.addEventListener('click', connectWallet);
-  disconnectWalletBtn.addEventListener('click', disconnect);
-  faucetBtn.addEventListener('click', () => window.open('https://faucet.circle.com/', '_blank'));
-  guideBtn.addEventListener('click', () => guideModal.classList.add('active'));
-  closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
-  guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
+  }, 4000);
 
   refreshUI();
   lucide.createIcons();
