@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Xroga · Arc Swap 2026 – Fast</title>
+  <title>Xroga · Arc Swap 2026 – Fast + Faucet + Guide</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -36,16 +36,16 @@
       transition: transform 0.25s ease; pointer-events: none; white-space: nowrap;
     }
     .toast-show { transform: translateX(-50%) translateY(0); }
-    .token-modal {
+    .token-modal, .guide-modal {
       position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); z-index: 2000;
       display: flex; align-items: flex-end; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s;
     }
-    .token-modal.active { opacity: 1; visibility: visible; }
-    .token-drawer {
+    .token-modal.active, .guide-modal.active { opacity: 1; visibility: visible; }
+    .token-drawer, .guide-drawer {
       background: #0f172fe6; backdrop-filter: blur(20px); border-radius: 32px 32px 0 0; width: 100%; max-width: 480px;
       transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); border-top: 1px solid #3b82f680;
     }
-    .token-modal.active .token-drawer { transform: translateY(0); }
+    .token-modal.active .token-drawer, .guide-modal.active .guide-drawer { transform: translateY(0); }
     @media (max-width: 500px) { .glass-panel { padding: 1rem; } }
     button, .token-trigger { touch-action: manipulation; }
     .loading-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; display: inline-block; }
@@ -58,14 +58,23 @@
 
 <main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10 relative z-10">
   <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
+    <!-- header with guide and faucet buttons -->
     <div class="flex justify-between items-center mb-5">
       <div class="flex items-center gap-2">
         <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
         <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">ARC testnet</span>
       </div>
-      <button id="connectWalletBtn" class="flex items-center gap-1.5 bg-slate-800/70 hover:bg-slate-700/80 transition-all rounded-full px-3 py-1.5 text-sm font-medium text-slate-200 border border-slate-700">
-        <i data-lucide="wallet" class="w-3.5 h-3.5"></i><span id="connectBtnText">Connect</span>
-      </button>
+      <div class="flex gap-2">
+        <button id="faucetBtn" class="flex items-center gap-1 bg-emerald-600/60 hover:bg-emerald-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-emerald-500/40">
+          <i data-lucide="droplet" class="w-3 h-3"></i> Faucet
+        </button>
+        <button id="guideBtn" class="flex items-center gap-1 bg-purple-600/60 hover:bg-purple-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-purple-500/40">
+          <i data-lucide="help-circle" class="w-3 h-3"></i> Guide
+        </button>
+        <button id="connectWalletBtn" class="flex items-center gap-1.5 bg-slate-800/70 hover:bg-slate-700/80 transition-all rounded-full px-3 py-1.5 text-sm font-medium text-slate-200 border border-slate-700">
+          <i data-lucide="wallet" class="w-3.5 h-3.5"></i><span id="connectBtnText">Connect</span>
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
@@ -165,6 +174,7 @@
   </div>
 </main>
 
+<!-- Token selector modal -->
 <div id="tokenModal" class="token-modal">
   <div class="token-drawer p-5">
     <div class="flex justify-between items-center mb-4">
@@ -181,10 +191,47 @@
   </div>
 </div>
 
+<!-- Guide modal -->
+<div id="guideModal" class="guide-modal">
+  <div class="guide-drawer p-5">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-white font-semibold flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5"></i> How to Swap on Xroga</h3>
+      <button id="closeGuideBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
+    </div>
+    <div class="space-y-4 text-slate-300 text-sm">
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">1</div>
+        <p>Install a Web3 wallet like <strong>MetaMask</strong> or <strong>Rabby</strong>.</p>
+      </div>
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">2</div>
+        <p>Click <strong>“Connect Wallet”</strong> and switch to <strong>Arc Testnet</strong> (automatically added).</p>
+      </div>
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">3</div>
+        <p>If you have no testnet tokens, click the <strong>“Faucet”</strong> button to get free USDC and EURC.</p>
+      </div>
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">4</div>
+        <p>Enter the amount, choose tokens (USDC ↔ EURC), and click <strong>“Swap tokens”</strong>.</p>
+      </div>
+      <div class="flex gap-3 items-start">
+        <div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div>
+        <p>Confirm the transaction in your wallet – the swap will complete in seconds.</p>
+      </div>
+      <div class="bg-blue-500/10 rounded-xl p-3 mt-2 border border-blue-500/30">
+        <p class="text-xs text-blue-300"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i> Need help? The AI sparkle button gives real‑time gas insights.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   // ========== OFFICIAL ARC TESTNET TOKEN ADDRESSES ==========
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+  // Faucet URL – replace with the actual Arc testnet faucet if known
+  const FAUCET_URL = 'https://faucet.arc.network'; // Placeholder – update with real URL
 
   const ERC20_ABI = [
     "function balanceOf(address owner) view returns (uint256)",
@@ -226,6 +273,7 @@
   const fromTokenSymbolSpan = document.getElementById('fromTokenSymbol');
   const toTokenSymbolSpan = document.getElementById('toTokenSymbol');
   const tokenModal = document.getElementById('tokenModal');
+  const guideModal = document.getElementById('guideModal');
   const aiSparkBtn = document.getElementById('aiSparkBtn');
   const advancedToggle = document.getElementById('advancedToggle');
   const advancedPanel = document.getElementById('advancedPanel');
@@ -233,6 +281,9 @@
   const copyBtn = document.getElementById('copyAddressBtn');
   const disconnectWalletBtn = document.getElementById('disconnectBtn');
   const gasEstimateSpan = document.getElementById('gasEstimate');
+  const faucetBtn = document.getElementById('faucetBtn');
+  const guideBtn = document.getElementById('guideBtn');
+  const closeGuideBtn = document.getElementById('closeGuideBtn');
 
   function showToast(msg, isError = false) {
     const toast = document.getElementById('toastRoot');
@@ -241,6 +292,25 @@
     toast.style.borderColor = isError ? '#ef4444' : '#3b82f6';
     setTimeout(() => toast.classList.remove('toast-show'), 4000);
   }
+
+  // Faucet button: open the faucet URL
+  faucetBtn.addEventListener('click', () => {
+    window.open(FAUCET_URL, '_blank');
+    showToast('Opening Arc testnet faucet...');
+  });
+
+  // Guide modal
+  guideBtn.addEventListener('click', () => {
+    guideModal.classList.add('active');
+    lucide.createIcons();
+  });
+  closeGuideBtn.addEventListener('click', () => {
+    guideModal.classList.remove('active');
+  });
+  // Close guide modal when clicking outside (optional)
+  guideModal.addEventListener('click', (e) => {
+    if (e.target === guideModal) guideModal.classList.remove('active');
+  });
 
   async function fetchTokenBalances() {
     if (!userAddress || !provider) return;
@@ -390,7 +460,6 @@
     if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); }
   });
 
-  // ========== OPTIMIZED SWAP FUNCTION (NO ARTIFICIAL DELAYS) ==========
   async function executeSwap() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -399,12 +468,10 @@
 
     isProcessing = true;
     swapBtn.disabled = true;
-    // Show loading state immediately – no fake progress bar
     swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
     lucide.createIcons();
 
     try {
-      // 1. Get swap parameters from backend
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -418,7 +485,6 @@
       const swapData = await response.json();
       if (!response.ok) throw new Error(swapData.error || 'Failed to prepare transaction');
 
-      // 2. Immediately prompt user to sign (wallet popup appears now)
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
       const tx = {
         from: userAddress,
@@ -428,20 +494,14 @@
         gasPrice: swapData.gasPrice,
         gasLimit: ethers.BigNumber.from(swapData.gas || 500000)
       };
-      
-      // Send transaction – this triggers the wallet confirmation popup instantly
       const sendTx = await provider.getSigner().sendTransaction(tx);
       showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}... confirming`, false);
-      
-      // 3. Wait for confirmation (this is the only real delay – blockchain time)
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on chain...</span>';
       await sendTx.wait(1);
-      
       showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo} completed.`, false);
       swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
       lucide.createIcons();
-      await refreshUI(); // Refresh balances after swap
-      
+      await refreshUI();
       setTimeout(() => {
         swapBtnText.innerHTML = "Swap tokens";
         isProcessing = false;
@@ -459,7 +519,6 @@
     }
   }
 
-  // ========== UI EVENT HANDLERS ==========
   flipBtn.addEventListener('click', () => {
     let tmp = selectedFrom;
     selectedFrom = selectedTo;
