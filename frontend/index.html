@@ -223,9 +223,8 @@
     "function symbol() view returns (string)"
   ];
 
-  // ========== BACKEND URL (REPLACE WITH YOUR DEPLOYED BACKEND) ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';  // 👈 CHANGE THIS
-
+  // ========== BACKEND URL ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
   const EXPECTED_CHAIN_ID = 5042002;
 
   let userAddress = null;
@@ -238,7 +237,7 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements
+  // DOM elements (same as before)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -340,22 +339,27 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); } });
 
-  // ========== BALANCE FETCHING (with decimal auto‑detection + mock fallback) ==========
+  // ========== BALANCE FETCHING (fix decimal handling) ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
     try {
-      const usdcBalance = await tokenContracts.USDC.balanceOf(userAddress);
+      const usdcBalanceWei = await tokenContracts.USDC.balanceOf(userAddress);
       const usdcDecimals = await tokenContracts.USDC.decimals();
-      userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcBalance, usdcDecimals));
-      const eurcBalance = await tokenContracts.EURC.balanceOf(userAddress);
+      userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcBalanceWei, usdcDecimals));
+      
+      const eurcBalanceWei = await tokenContracts.EURC.balanceOf(userAddress);
       const eurcDecimals = await tokenContracts.EURC.decimals();
-      userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalance, eurcDecimals));
+      userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalanceWei, eurcDecimals));
+      
+      console.log(`✅ Real balances: USDC = ${userBalances.USDC}, EURC = ${userBalances.EURC}`);
     } catch (err) {
-      console.warn("Balance fetch error – using mock balances for demo");
+      console.warn("Balance fetch error – using mock balances for demo", err);
       userBalances.USDC = 20;
       userBalances.EURC = 20;
     }
     updateBalanceUI();
+    // Force validation after balances update
+    validateSwap();
   }
 
   function updateBalanceUI() {
@@ -368,7 +372,7 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION (Arc uses USDC, enforce 160 Gwei min) ==========
+  // ========== GAS ESTIMATION ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
@@ -384,7 +388,7 @@
     } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
 
-  // ========== QUOTE UPDATE (fixed rate for preview) ==========
+  // ========== QUOTE UPDATE ==========
   function updateQuote() {
     if (!connected) {
       receiveField.value = '';
@@ -407,17 +411,30 @@
     rateDynamicSpan.innerText = selectedFrom === 'USDC' ? '1 USDC ≈ 0.978 EURC' : '1 EURC ≈ 1.023 USDC';
   }
 
+  // ========== VALIDATION – THE FIX ==========
   function validateSwap() {
-    if (!connected || isProcessing) { swapBtn.disabled = true; return; }
+    if (!connected || isProcessing) {
+      swapBtn.disabled = true;
+      return;
+    }
     const amount = parseFloat(amountInput.value);
     const balance = userBalances[selectedFrom] || 0;
-    swapBtn.disabled = (isNaN(amount) || amount <= 0 || amount > balance);
+    // Allow if amount is positive and ≤ balance
+    const isValid = !isNaN(amount) && amount > 0 && amount <= balance;
+    swapBtn.disabled = !isValid;
+    // Optional: log for debugging
+    if (connected && !isProcessing) {
+      console.log(`Validate: amount=${amount}, balance=${balance}, isValid=${isValid}, disabled=${swapBtn.disabled}`);
+    }
   }
 
   async function refreshUI() {
-    if (connected) { await fetchBalances(); await updateGasFee(); }
+    if (connected) { 
+      await fetchBalances(); 
+      await updateGasFee(); 
+    }
     updateQuote();
-    validateSwap();
+    validateSwap(); // extra call
     lucide.createIcons();
   }
 
@@ -504,7 +521,10 @@
     });
   });
 
-  amountInput.addEventListener('input', refreshUI);
+  amountInput.addEventListener('input', () => {
+    updateQuote();
+    validateSwap();
+  });
   swapBtn.addEventListener('click', executeSwap);
 
   document.querySelectorAll('.slippagePreset').forEach(btn => {
@@ -564,7 +584,7 @@
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // ========== SPARKLINE ANIMATION (cosmetic) ==========
+  // ========== SPARKLINE ==========
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
