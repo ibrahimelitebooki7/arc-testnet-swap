@@ -248,7 +248,7 @@
   let isProcessing = false;
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
-  let currentMode = "swap"; // "swap" or "bridge"
+  let currentMode = "swap";
   let backendWalletAddress = "";
 
   // DOM elements
@@ -286,7 +286,6 @@
     setTimeout(() => toast.classList.remove('toast-show'), 4000);
   }
 
-  // Fetch backend wallet address (bridge provider address)
   async function fetchBackendWallet() {
     try {
       const res = await fetch(BACKEND_GET_URL);
@@ -349,7 +348,6 @@
     const minReceived = rawOut * (1 - currentSlippage / 100);
     receiveField.value = rawOut.toFixed(6);
     minReceiveHint.innerText = `min receive: ${minReceived.toFixed(6)} ${selectedTo}`;
-    document.getElementById('rateDynamic') ? document.getElementById('rateDynamic').innerText = selectedFrom === 'USDC' ? `1 USDC ≈ 0.978 EURC` : `1 EURC ≈ 1.023 USDC` : null;
   }
 
   function validateSwap() {
@@ -408,29 +406,62 @@
   }
   function disconnect() { connected = false; userAddress = null; provider = null; userBalances = { USDC:0, EURC:0 }; walletAddrSpan.innerText = '⚡ not connected'; statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500'); connectBtnText.innerText = 'Connect'; document.getElementById('copyAddressBtn').classList.add('hidden'); document.getElementById('disconnectBtn').classList.add('hidden'); refreshUI(); showToast('Disconnected'); }
 
-  // ========== SWAP EXECUTION (same as original, backend wallet) ==========
+  // ========== SWAP EXECUTION (FIXED - now actually sends tx) ==========
   async function executeSwap() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
-    isProcessing = true; swapBtn.disabled = true;
+    if (amount > userBalances[selectedFrom]) { showToast(`Insufficient ${selectedFrom} balance`, true); return; }
+
+    isProcessing = true;
+    swapBtn.disabled = true;
     actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
+
     try {
+      // 1. Get swap transaction data from backend
       const res = await fetch(BACKEND_SWAP_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenIn: selectedFrom, tokenOut: selectedTo, amountIn: amount.toString(), walletAddress: userAddress })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Swap failed');
-      actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
-      showToast(`Swap executed! Tx: ${data.transactionHash?.slice(0,10)}`, false);
-      await refreshUI();
+      const txData = await res.json();
+      if (!res.ok) throw new Error(txData.error || 'Swap preparation failed');
+      if (!txData.to || !txData.data) throw new Error('Invalid transaction data from backend');
+
+      // 2. Ask user to sign & send the transaction
+      actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
+      const tx = {
+        from: userAddress,
+        to: txData.to,
+        data: txData.data,
+        value: txData.value || '0x0',
+        gasLimit: txData.gas || 500000,
+        gasPrice: txData.gasPrice
+      };
+      const signer = provider.getSigner();
+      const transactionResponse = await signer.sendTransaction(tx);
+      
+      // 3. Wait for confirmation (optional, but good UX)
+      actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on chain...</span>';
+      await transactionResponse.wait(1);
+      
+      showToast(`✅ Swap successful! Tx: ${transactionResponse.hash.slice(0,10)}...`, false);
+      await refreshUI(); // update balances
       actionBtnText.innerHTML = 'Swap tokens';
-    } catch(err) { showToast(`Swap error: ${err.message}`, true); actionBtnText.innerHTML = 'Swap tokens'; } 
-    finally { isProcessing = false; validateSwap(); }
+    } catch (err) {
+      console.error(err);
+      let friendly = err.message;
+      if (friendly.includes('user rejected')) friendly = 'Transaction rejected.';
+      else if (friendly.includes('insufficient')) friendly = 'Insufficient funds for gas or token.';
+      showToast(`❌ Swap failed: ${friendly}`, true);
+      actionBtnText.innerHTML = 'Swap tokens';
+    } finally {
+      isProcessing = false;
+      validateSwap();
+    }
   }
 
-  // ========== BRIDGE EXECUTION via backend ==========
+  // ========== BRIDGE EXECUTION (unchanged - works) ==========
   async function executeBridge() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     let sourceChain = sourceChainSelect.value;
