@@ -110,7 +110,7 @@
 
     <!-- swap arrow -->
     <div class="flex justify-center -my-1 relative z-10">
-      <button id="flipSwapBtn" class="swap-arrow-btn bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
+      <button id="flipSwapBtn" class="bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
         <i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i>
       </button>
     </div>
@@ -173,7 +173,7 @@
     </div>
 
     <!-- swap action button -->
-    <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20 relative overflow-hidden">
+    <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
       <span id="swapBtnText">Swap tokens</span>
     </button>
   </div>
@@ -200,30 +200,41 @@
 <div id="guideModal" class="guide-modal">
   <div class="guide-drawer p-5">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-white font-semibold flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5"></i> How to Swap on Xroga</h3>
+      <h3 class="text-white font-semibold flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5"></i> How to Swap</h3>
       <button id="closeGuideBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
     </div>
     <div class="space-y-4 text-slate-300 text-sm">
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">1</div><p>Install a Web3 wallet like <strong>MetaMask</strong> or <strong>Rabby</strong>.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">2</div><p>Click <strong>“Connect Wallet”</strong> and switch to <strong>Arc Testnet</strong> (automatically added).</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">3</div><p>If you have no testnet tokens, click the <strong>“Faucet”</strong> button to get free USDC and EURC.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">4</div><p>Enter the amount, choose tokens (USDC ↔ EURC), and click <strong>“Swap tokens”</strong>.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div><p>Confirm the transaction in your wallet – the swap will complete in seconds.</p></div>
-      <div class="bg-blue-500/10 rounded-xl p-3 mt-2 border border-blue-500/30"><p class="text-xs text-blue-300"><i data-lucide="info" class="w-3 h-3 inline mr-1"></i> The AI sparkle button gives real‑time gas insights.</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">1</div><p>Install MetaMask or Rabby.</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">2</div><p>Click “Connect Wallet” – automatically adds Arc Testnet.</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">3</div><p>Get free test tokens from the <strong>Faucet</strong> button (Circle Faucet).</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">4</div><p>Enter amount, choose tokens (USDC ↔ EURC), click Swap.</p></div>
+      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div><p>Confirm transaction in your wallet – swap completes in seconds.</p></div>
     </div>
   </div>
 </div>
 
 <script>
-  // ========== CONFIGURATION ==========
-  const BACKEND_URL = 'https://your-backend.vercel.app/api/swap'; // 👈 REPLACE WITH YOUR BACKEND URL
-  const EXPECTED_CHAIN_ID = 5042002;
+  // ========== OFFICIAL ARC TESTNET CONTRACT ADDRESSES ==========
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
-  const ERC20_ABI = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
+  const ERC20_ABI = [
+    "function balanceOf(address owner) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)"
+  ];
 
-  let userAddress = null, provider = null, connected = false;
-  let selectedFrom = "USDC", selectedTo = "EURC", currentSlippage = 0.5, isProcessing = false;
+  // ========== BACKEND URL (REPLACE WITH YOUR DEPLOYED BACKEND) ==========
+  const BACKEND_URL = 'https://your-backend.vercel.app/api/swap';  // 👈 CHANGE THIS
+
+  const EXPECTED_CHAIN_ID = 5042002;
+
+  let userAddress = null;
+  let provider = null;
+  let connected = false;
+  let selectedFrom = "USDC";
+  let selectedTo = "EURC";
+  let currentSlippage = 0.5;
+  let isProcessing = false;
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
@@ -268,12 +279,15 @@
     setTimeout(() => toast.classList.remove('toast-show'), 4000);
   }
 
-  faucetBtn.addEventListener('click', () => window.open('https://faucet.circle.com/', '_blank'));
+  faucetBtn.addEventListener('click', () => {
+    window.open('https://faucet.circle.com/', '_blank');
+    showToast('Opening Circle Faucet – request USDC/EURC on Arc Testnet');
+  });
   guideBtn.addEventListener('click', () => guideModal.classList.add('active'));
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // Wallet connection
+  // ========== WALLET CONNECTION ==========
   async function ensureArcNetwork(ethereumProvider) {
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
@@ -292,7 +306,7 @@
   }
 
   async function connectWallet() {
-    if (!window.ethereum) { showToast('Install MetaMask/Rabby', true); return; }
+    if (!window.ethereum) { showToast('Install MetaMask or Rabby', true); return; }
     try {
       showToast('Connecting...');
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -324,9 +338,9 @@
     showToast('Disconnected');
   }
 
-  copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Copied'); } });
+  copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); } });
 
-  // Balance fetching with mock fallback
+  // ========== BALANCE FETCHING (with decimal auto‑detection + mock fallback) ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
     try {
@@ -336,8 +350,8 @@
       const eurcBalance = await tokenContracts.EURC.balanceOf(userAddress);
       const eurcDecimals = await tokenContracts.EURC.decimals();
       userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalance, eurcDecimals));
-    } catch(e) {
-      console.warn("Balance fetch error – using mock for demo");
+    } catch (err) {
+      console.warn("Balance fetch error – using mock balances for demo");
       userBalances.USDC = 20;
       userBalances.EURC = 20;
     }
@@ -354,6 +368,7 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
+  // ========== GAS ESTIMATION (Arc uses USDC, enforce 160 Gwei min) ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
@@ -366,9 +381,10 @@
       const totalWei = gasLimit.mul(maxFeePerGas);
       const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
       gasEstimateSpan.innerText = `~${parseFloat(totalUSDC).toFixed(6)} USDC`;
-    } catch(err) { gasEstimateSpan.innerText = "Gas error"; }
+    } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
 
+  // ========== QUOTE UPDATE (fixed rate for preview) ==========
   function updateQuote() {
     if (!connected) {
       receiveField.value = '';
@@ -405,7 +421,7 @@
     lucide.createIcons();
   }
 
-  // Swap execution
+  // ========== SWAP EXECUTION ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -461,11 +477,9 @@
     }
   }
 
-  // UI event handlers
+  // ========== UI EVENT HANDLERS ==========
   flipBtn.addEventListener('click', () => {
-    let tmp = selectedFrom;
-    selectedFrom = selectedTo;
-    selectedTo = tmp;
+    let tmp = selectedFrom; selectedFrom = selectedTo; selectedTo = tmp;
     fromTokenSymbolSpan.innerText = selectedFrom;
     toTokenSymbolSpan.innerText = selectedTo;
     fromTokenBtn.querySelector('i').setAttribute('data-lucide', selectedFrom === 'USDC' ? 'circle-dollar-sign' : 'euro');
@@ -511,14 +525,14 @@
     showToast(`✨ AI insight: Network fees are ${gasEstimateSpan.innerText}. Use 0.5% slippage for stable pairs.`);
   });
 
-  // Token selector modal
-  const tokenListTokens = [
+  // ========== TOKEN SELECTOR MODAL ==========
+  const tokenList = [
     { symbol:"USDC", name:"USD Coin", icon:"circle-dollar-sign" },
     { symbol:"EURC", name:"Euro Coin", icon:"euro" }
   ];
   function renderTokenModal(targetSide) {
     let search = document.getElementById('tokenSearch').value.toLowerCase();
-    let filtered = tokenListTokens.filter(t => t.symbol.toLowerCase().includes(search));
+    let filtered = tokenList.filter(t => t.symbol.toLowerCase().includes(search));
     let container = document.getElementById('tokenList');
     container.innerHTML = filtered.map(t => `
       <div class="token-item flex justify-between items-center p-3 rounded-xl hover:bg-slate-700/50 cursor-pointer" data-symbol="${t.symbol}" data-side="${targetSide}">
@@ -550,7 +564,7 @@
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // Sparkline animation (cosmetic)
+  // ========== SPARKLINE ANIMATION (cosmetic) ==========
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
@@ -573,6 +587,7 @@
   }
   setInterval(() => { if (connected) updateSparkline(); }, 4000);
 
+  // ========== ACCOUNT / CHAIN CHANGE HANDLERS ==========
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', (accounts) => {
       if (!accounts.length) disconnect();
