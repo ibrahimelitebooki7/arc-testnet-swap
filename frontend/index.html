@@ -22,7 +22,6 @@
       background: rgba(12, 20, 32, 0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59, 130, 246, 0.2);
       transition: all 0.25s ease;
     }
-    .morph-btn { transition: all 0.2s; }
     .toast-notify {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
       background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px;
@@ -45,6 +44,7 @@
     .mode-tab-active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
     .mode-tab-inactive { background: rgba(30,41,59,0.6); color: #94a3b8; border: 1px solid #334155; }
     select, input { background: rgba(15,23,42,0.8); border: 1px solid #334155; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -81,7 +81,7 @@
       <button id="bridgeModeBtn" class="mode-tab-inactive flex-1 py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1"><i data-lucide="bridge" class="w-3.5 h-3.5"></i> Bridge (CCTP)</button>
     </div>
 
-    <!-- ==================== SWAP UI ==================== -->
+    <!-- ========== SWAP UI (exactly as old working version) ========== -->
     <div id="swapContainer">
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-1.5">
@@ -125,7 +125,7 @@
       </div>
     </div>
 
-    <!-- ==================== BRIDGE UI ==================== -->
+    <!-- ========== BRIDGE UI (new, separate) ========== -->
     <div id="bridgeContainer" class="hidden">
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-2">
@@ -173,7 +173,7 @@
       </div>
     </div>
 
-    <!-- Advanced panel -->
+    <!-- Advanced panel (slippage only for swap) -->
     <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
       <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
         <div class="flex gap-3 items-center"><i data-lucide="fuel" class="w-3 h-3"></i> <span id="gasEstimate">Fetching gas...</span></div>
@@ -207,7 +207,7 @@
 </div>
 
 <script>
-  // ========== CONFIGURATION ==========
+  // ==================== CONFIGURATION ====================
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
   const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)", "function decimals() view returns (uint8)", "function symbol() view returns (string)"];
@@ -223,7 +223,6 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
   let currentMode = "swap";
-  let backendWalletAddress = "";
 
   // DOM elements
   const connectBtn = document.getElementById('connectWalletBtn');
@@ -265,8 +264,7 @@
       const res = await fetch(BACKEND_GET_URL);
       const data = await res.json();
       if (data.backendAddress) {
-        backendWalletAddress = data.backendAddress;
-        document.getElementById('backendWalletBadge').innerHTML = `🐚 provider: ${backendWalletAddress.slice(0,6)}...${backendWalletAddress.slice(-4)}`;
+        document.getElementById('backendWalletBadge').innerHTML = `🐚 provider: ${data.backendAddress.slice(0,6)}...${data.backendAddress.slice(-4)}`;
       }
     } catch(e) { console.warn(e); }
   }
@@ -331,7 +329,6 @@
       if (isNaN(amount) || amount <= 0 || amount > (userBalances[selectedFrom] || 0)) actionBtn.disabled = true;
       else actionBtn.disabled = false;
     } else {
-      // bridge mode: basic validation
       const amount = parseFloat(bridgeAmountInput.value);
       if (isNaN(amount) || amount <= 0 || amount > (userBalances.USDC || 0)) actionBtn.disabled = true;
       else actionBtn.disabled = false;
@@ -385,9 +382,43 @@
       showToast('Connected to Arc Testnet');
     } catch(err) { showToast(`Connection err: ${err.message}`, true); connected = false; }
   }
-  function disconnect() { connected = false; userAddress = null; provider = null; userBalances = { USDC:0, EURC:0 }; walletAddrSpan.innerText = '⚡ not connected'; statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500'); connectBtnText.innerText = 'Connect'; document.getElementById('copyAddressBtn').classList.add('hidden'); document.getElementById('disconnectBtn').classList.add('hidden'); refreshUI(); showToast('Disconnected'); }
 
-  // ========== SWAP EXECUTION (EXACTLY AS ORIGINAL WORKING CODE) ==========
+  function disconnect() {
+    connected = false; userAddress = null; provider = null; userBalances = { USDC:0, EURC:0 };
+    walletAddrSpan.innerText = '⚡ not connected';
+    statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500');
+    connectBtnText.innerText = 'Connect';
+    document.getElementById('copyAddressBtn').classList.add('hidden');
+    document.getElementById('disconnectBtn').classList.add('hidden');
+    refreshUI(); showToast('Disconnected');
+  }
+
+  // Helper: extract transaction object from backend response (supports old & new format)
+  function extractTransaction(response) {
+    // If response already contains to/data (new format)
+    if (response.to && response.data) {
+      return {
+        to: response.to,
+        data: response.data,
+        value: response.value || "0x0",
+        gasLimit: response.gas || 500000,
+        gasPrice: response.gasPrice
+      };
+    }
+    // If response contains fullResult (old swap backend format)
+    if (response.fullResult && response.fullResult.to && response.fullResult.data) {
+      return {
+        to: response.fullResult.to,
+        data: response.fullResult.data,
+        value: response.fullResult.value || "0x0",
+        gasLimit: response.fullResult.gas || 500000,
+        gasPrice: response.fullResult.gasPrice
+      };
+    }
+    throw new Error('Backend did not return a valid transaction object');
+  }
+
+  // ========== SWAP FUNCTION (works with old swap backend) ==========
   async function executeSwap() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -399,30 +430,20 @@
     actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
 
     try {
-      // 1. Get swap transaction data from backend
       const res = await fetch(BACKEND_SWAP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokenIn: selectedFrom, tokenOut: selectedTo, amountIn: amount.toString(), walletAddress: userAddress })
       });
-      const txData = await res.json();
-      if (!res.ok) throw new Error(txData.error || 'Swap preparation failed');
-      if (!txData.to || !txData.data) throw new Error('Invalid transaction data from backend');
-
-      // 2. Ask user to sign & send the transaction (this is what makes it work)
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Swap preparation failed');
+      
+      const tx = extractTransaction(data);
+      
       actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
-      const tx = {
-        from: userAddress,
-        to: txData.to,
-        data: txData.data,
-        value: txData.value || '0x0',
-        gasLimit: txData.gas || 500000,
-        gasPrice: txData.gasPrice
-      };
       const signer = provider.getSigner();
       const transactionResponse = await signer.sendTransaction(tx);
       
-      // 3. Wait for confirmation
       actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on chain...</span>';
       await transactionResponse.wait(1);
       
@@ -442,7 +463,7 @@
     }
   }
 
-  // ========== BRIDGE EXECUTION (user signs burn transaction) ==========
+  // ========== BRIDGE FUNCTION (requires bridge backend that returns transaction object) ==========
   async function executeBridge() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     let sourceChain = sourceChainSelect.value;
@@ -461,26 +482,17 @@
     actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing bridge...</span>';
 
     try {
-      // 1. Get burn transaction from backend
       const res = await fetch(BACKEND_BRIDGE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceChain, destChain, amount: amount.toString(), recipient, token: "USDC" })
       });
-      const txData = await res.json();
-      if (!res.ok) throw new Error(txData.error || 'Bridge preparation failed');
-      if (!txData.to || !txData.data) throw new Error('Invalid transaction data');
-
-      // 2. User signs the burn transaction
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Bridge preparation failed');
+      
+      const tx = extractTransaction(data);
+      
       actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm burn in wallet...</span>';
-      const tx = {
-        from: userAddress,
-        to: txData.to,
-        data: txData.data,
-        value: txData.value || '0x0',
-        gasLimit: txData.gas || 500000,
-        gasPrice: txData.gasPrice
-      };
       const signer = provider.getSigner();
       const burnTx = await signer.sendTransaction(tx);
       await burnTx.wait(1);
@@ -549,7 +561,7 @@
   flipBridgeBtn.addEventListener('click', flipBridge);
   sourceChainSelect.addEventListener('change', validateAction);
   destChainSelect.addEventListener('change', validateAction);
-  bridgeAmountInput.addEventListener('input', validateAction);
+  bridgeAmountInput.addEventListener('input', () => { validateAction(); updateBridgeBalanceHint(); });
   recipientAddressInput.addEventListener('input', validateAction);
   bridgeMaxBtn.addEventListener('click', () => { if (connected) bridgeAmountInput.value = userBalances.USDC || 0; validateAction(); });
   actionBtn.addEventListener('click', () => { if(currentMode === 'swap') executeSwap(); else executeBridge(); });
