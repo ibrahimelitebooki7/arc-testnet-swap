@@ -253,69 +253,66 @@
 
   // ========== Execute Swap (Fixed – calls backend and handles errors) ==========
   async function executeSwap() {
-    if (!connected) { showToast('Connect wallet', true); return; }
-    const amount = parseFloat(document.getElementById('swapAmountInput').value);
-    if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
-    if (amount > swapUserBalances[swapSelectedFrom]) { showToast(`Insufficient ${swapSelectedFrom} balance`, true); return; }
+  if (!connected) { showToast('Connect wallet', true); return; }
+  const amount = parseFloat(document.getElementById('swapAmountInput').value);
+  if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
+  if (amount > swapUserBalances[swapSelectedFrom]) { showToast(`Insufficient ${swapSelectedFrom} balance`, true); return; }
 
-    swapIsProcessing = true;
-    const btn = document.getElementById('swapActionBtn');
-    const btnText = document.getElementById('swapBtnText');
-    btn.disabled = true;
-    btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing...</span>';
+  swapIsProcessing = true;
+  const btn = document.getElementById('swapActionBtn');
+  const btnText = document.getElementById('swapBtnText');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing...</span>';
 
-    try {
-      // 1) Call your backend API
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenIn: swapSelectedFrom,
-          tokenOut: swapSelectedTo,
-          amountIn: amount.toString(),
-          walletAddress: userAddress
-        })
-      });
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tokenIn: swapSelectedFrom,
+        tokenOut: swapSelectedTo,
+        amountIn: amount.toString(),
+        walletAddress: userAddress
+      })
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Backend error (${response.status}): ${errorText.slice(0, 100)}`);
-      }
-
-      const data = await response.json();
-      if (!data.success && !data.transactionHash) throw new Error(data.error || 'Unknown error');
-
-      btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
-      // 2) Send the built transaction (your backend should return a raw tx object)
-      // For simplicity, we assume the backend returns a transaction object that ethers can send.
-      // If your backend returns only a hash, then you need to adjust.
-      // Here we expect data.to, data.data, data.value, data.gasPrice, data.gas.
-      const tx = {
-        to: data.to,
-        data: data.data,
-        value: data.value || '0x0',
-        gasPrice: data.gasPrice,
-        gasLimit: ethers.BigNumber.from(data.gas || 500000),
-        from: userAddress
-      };
-      const sendTx = await provider.getSigner().sendTransaction(tx);
-      showToast(`Tx sent: ${sendTx.hash.slice(0,10)}...`);
-      btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
-      await sendTx.wait(1);
-      showToast(`Swap confirmed! ${swapSelectedFrom} → ${swapSelectedTo}`, false);
-      btnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
-      lucide.createIcons();
-      await refreshSwapUI();
-    } catch (err) {
-      console.error('Swap error:', err);
-      let msg = err.message.includes('rejected') ? 'Transaction rejected' : (err.message || 'Unknown error');
-      showToast(`Swap failed: ${msg}`, true);
-      btnText.innerHTML = 'Swap tokens';
-    } finally {
-      swapIsProcessing = false;
-      validateSwap();
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Backend error (${response.status}): ${errorText.slice(0, 100)}`);
     }
+
+    const txData = await response.json();
+
+    // No "success" check – directly use the transaction object returned by the backend
+    if (!txData.to || !txData.data) throw new Error('Invalid transaction object from backend');
+
+    btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
+    const tx = {
+      to: txData.to,
+      data: txData.data,
+      value: txData.value || '0x0',
+      gasPrice: txData.gasPrice,
+      gasLimit: ethers.BigNumber.from(txData.gas || 500000),
+      from: userAddress
+    };
+    const sendTx = await provider.getSigner().sendTransaction(tx);
+    showToast(`Tx sent: ${sendTx.hash.slice(0,10)}...`);
+    btnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
+    await sendTx.wait(1);
+    showToast(`Swap confirmed! ${swapSelectedFrom} → ${swapSelectedTo}`, false);
+    btnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
+    lucide.createIcons();
+    await refreshSwapUI();
+  } catch (err) {
+    console.error('Swap error:', err);
+    let msg = err.message.includes('rejected') ? 'Transaction rejected' : (err.message || 'Unknown error');
+    showToast(`Swap failed: ${msg}`, true);
+    btnText.innerHTML = 'Swap tokens';
+  } finally {
+    swapIsProcessing = false;
+    validateSwap();
   }
+}
 
   // ========== Event listeners (same as before) ==========
   document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
