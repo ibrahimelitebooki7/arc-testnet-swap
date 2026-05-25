@@ -238,6 +238,31 @@
     }
   }
 
+  async function addTokenToMetaMask(tokenAddress, tokenSymbol, tokenDecimals, tokenImage) {
+  if (!window.ethereum) return;
+  try {
+    const wasAdded = await window.ethereum.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'ERC20',
+        options: {
+          address: tokenAddress,
+          symbol: tokenSymbol,
+          decimals: tokenDecimals,
+          image: tokenImage,
+        },
+      },
+    });
+    if (wasAdded) {
+      console.log(`${tokenSymbol} added to MetaMask!`);
+    }
+  } catch (error) {
+    console.error(`Failed to add ${tokenSymbol}:`, error);
+  }
+}
+  await addTokenToMetaMask('0x3600000000000000000000000000000000000000', 'USDC', 6, 'https://example.com/usdc.png');
+await addTokenToMetaMask('0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a', 'EURC', 6, 'https://example.com/eurc.png');
+
   async function connectWallet() {
     if (!window.ethereum) { showToast('Install MetaMask or Rabby', true); return; }
     try {
