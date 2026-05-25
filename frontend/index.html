@@ -20,15 +20,9 @@
     @keyframes breathe { 0% { opacity: 0.4; transform: scale(1); } 100% { opacity: 1; transform: scale(1.05); } }
     .glass-panel {
       background: rgba(12, 20, 32, 0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59, 130, 246, 0.2);
-      transition: all 0.25s ease; position: relative; overflow: hidden;
+      transition: all 0.25s ease;
     }
-    .glass-panel::after {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.15), transparent 70%);
-      opacity: 0; transition: opacity 0.2s; pointer-events: none;
-    }
-    .glass-panel:hover::after { opacity: 1; }
-    .morph-btn { position: relative; overflow: hidden; transition: all 0.2s; }
+    .morph-btn { transition: all 0.2s; }
     .toast-notify {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
       background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px;
@@ -43,15 +37,14 @@
     .token-modal.active { opacity: 1; visibility: visible; }
     .token-drawer {
       background: #0f172fe6; backdrop-filter: blur(20px); border-radius: 32px 32px 0 0; width: 100%; max-width: 480px;
-      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); border-top: 1px solid #3b82f680;
+      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
     }
     .token-modal.active .token-drawer { transform: translateY(0); }
     .loading-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; border-top-color: white; animation: spin 0.6s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .mode-tab-active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; border: none; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .mode-tab-active { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
     .mode-tab-inactive { background: rgba(30,41,59,0.6); color: #94a3b8; border: 1px solid #334155; }
-    select, input { background: rgba(15,23,42,0.8); border: 1px solid #334155; transition: all 0.2s; }
-    select:focus, input:focus { border-color: #3b82f6; outline: none; }
+    select, input { background: rgba(15,23,42,0.8); border: 1px solid #334155; }
   </style>
 </head>
 <body>
@@ -71,7 +64,7 @@
       </button>
     </div>
 
-    <!-- Wallet status + backend provider info -->
+    <!-- Wallet status -->
     <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
       <div class="flex items-center gap-2">
         <div id="statusLed" class="w-2 h-2 rounded-full bg-gray-500"></div>
@@ -82,13 +75,13 @@
       <div id="backendWalletBadge" class="text-[9px] bg-indigo-500/30 px-2 py-0.5 rounded-full truncate max-w-[140px]"></div>
     </div>
 
-    <!-- MODE TOGGLE: SWAP / BRIDGE -->
+    <!-- Mode Toggle -->
     <div class="flex bg-slate-800/30 rounded-2xl p-1 mb-6">
       <button id="swapModeBtn" class="mode-tab-active flex-1 py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1"><i data-lucide="arrows-up-down" class="w-3.5 h-3.5"></i> Swap</button>
       <button id="bridgeModeBtn" class="mode-tab-inactive flex-1 py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1"><i data-lucide="bridge" class="w-3.5 h-3.5"></i> Bridge (CCTP)</button>
     </div>
 
-    <!-- ################## SWAP UI ################## -->
+    <!-- ==================== SWAP UI ==================== -->
     <div id="swapContainer">
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-1.5">
@@ -96,7 +89,7 @@
           <span id="fromBalanceLabel" class="font-mono">—</span>
         </div>
         <div class="flex items-center gap-3">
-          <button id="fromTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
+          <button id="fromTokenBtn" class="flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
             <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i> <span id="fromTokenSymbol">USDC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
           </button>
           <input type="number" id="amountInput" value="1.0" step="0.5" class="bg-transparent text-right text-2xl font-medium text-white w-full outline-none">
@@ -110,7 +103,7 @@
       </div>
 
       <div class="flex justify-center -my-1 relative z-10">
-        <button id="flipSwapBtn" class="swap-arrow-btn bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
+        <button id="flipSwapBtn" class="bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
           <i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i>
         </button>
       </div>
@@ -121,7 +114,7 @@
           <span id="toBalanceLabel" class="font-mono">—</span>
         </div>
         <div class="flex items-center gap-3">
-          <button id="toTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
+          <button id="toTokenBtn" class="flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
             <i data-lucide="euro" class="w-4 h-4"></i> <span id="toTokenSymbol">EURC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
           </button>
           <input type="text" id="receiveField" readonly disabled class="bg-transparent text-right text-2xl font-medium text-white/80 w-full outline-none">
@@ -132,7 +125,7 @@
       </div>
     </div>
 
-    <!-- ################## BRIDGE UI ################## -->
+    <!-- ==================== BRIDGE UI ==================== -->
     <div id="bridgeContainer" class="hidden">
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-2">
@@ -146,13 +139,11 @@
           <option value="Base_Sepolia">Base Sepolia</option>
         </select>
       </div>
-
       <div class="flex justify-center -my-1 relative z-10">
         <button id="flipBridgeBtn" class="bg-slate-800/90 border border-purple-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
           <i data-lucide="arrow-left-right" class="w-5 h-5 text-purple-400"></i>
         </button>
       </div>
-
       <div class="glass-panel rounded-2xl p-4 mt-1 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-2">
           <span>Destination chain</span>
@@ -165,7 +156,6 @@
           <option value="Base_Sepolia">Base Sepolia</option>
         </select>
       </div>
-
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="flex justify-between text-xs text-slate-400 mb-1">
           <span>Amount (USDC)</span>
@@ -176,7 +166,6 @@
           <button id="bridgeMaxBtn" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/60 hover:bg-blue-600/50">MAX USDC</button>
         </div>
       </div>
-
       <div class="glass-panel rounded-2xl p-4 mb-3">
         <div class="text-xs text-slate-400 mb-1">Recipient address (on destination chain)</div>
         <input type="text" id="recipientAddress" placeholder="0x... or destination wallet" class="w-full rounded-xl px-3 py-2 text-white text-sm font-mono">
@@ -184,24 +173,14 @@
       </div>
     </div>
 
-    <!-- Shared gas & advanced panel -->
+    <!-- Advanced panel -->
     <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
       <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
-        <div class="flex gap-3 items-center">
-          <i data-lucide="fuel" class="w-3 h-3"></i> <span id="gasEstimate">Fetching gas...</span>
-        </div>
+        <div class="flex gap-3 items-center"><i data-lucide="fuel" class="w-3 h-3"></i> <span id="gasEstimate">Fetching gas...</span></div>
         <i data-lucide="chevron-down" id="chevronAdv" class="w-4 h-4 transition-transform"></i>
       </div>
       <div id="advancedPanel" class="hidden mt-2 space-y-2 pt-2 border-t border-white/10">
-        <div class="flex justify-between items-center">
-          <span class="text-[11px]">MEV protection (simulate)</span>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="mevToggle" class="sr-only peer">
-            <div class="w-8 h-4 bg-slate-700 rounded-full peer-checked:bg-blue-600 after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
-          </label>
-        </div>
-        <div>
-          <span class="text-[11px]">Slippage (swap only)</span>
+        <div><span class="text-[11px]">Slippage (swap only)</span>
           <div class="flex gap-2 mt-1">
             <button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.1">0.1%</button>
             <button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.5">0.5%</button>
@@ -211,14 +190,12 @@
       </div>
     </div>
 
-    <!-- Action button -->
     <button id="actionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
       <span id="actionBtnText">Swap tokens</span>
     </button>
   </div>
 </main>
 
-<!-- token modal reused for swap only -->
 <div id="tokenModal" class="token-modal">
   <div class="token-drawer p-5">
     <div class="flex justify-between items-center mb-4">
@@ -239,11 +216,8 @@
   const BACKEND_BRIDGE_URL = '/api/bridge';
   const BACKEND_GET_URL = '/api/swap';
 
-  let userAddress = null;
-  let provider = null;
-  let connected = false;
-  let selectedFrom = "USDC";
-  let selectedTo = "EURC";
+  let userAddress = null, provider = null, connected = false;
+  let selectedFrom = "USDC", selectedTo = "EURC";
   let currentSlippage = 0.5;
   let isProcessing = false;
   let userBalances = { USDC: 0, EURC: 0 };
@@ -261,7 +235,7 @@
   const amountInput = document.getElementById('amountInput');
   const receiveField = document.getElementById('receiveField');
   const minReceiveHint = document.getElementById('minReceiveHint');
-  const swapBtn = document.getElementById('actionBtn');
+  const actionBtn = document.getElementById('actionBtn');
   const actionBtnText = document.getElementById('actionBtnText');
   const flipSwapBtn = document.getElementById('flipSwapBtn');
   const flipBridgeBtn = document.getElementById('flipBridgeBtn');
@@ -350,17 +324,24 @@
     minReceiveHint.innerText = `min receive: ${minReceived.toFixed(6)} ${selectedTo}`;
   }
 
-  function validateSwap() {
-    if (!connected || isProcessing || currentMode !== "swap") { swapBtn.disabled = true; return; }
-    const amount = parseFloat(amountInput.value);
-    if (isNaN(amount) || amount <= 0 || amount > (userBalances[selectedFrom] || 0)) swapBtn.disabled = true;
-    else swapBtn.disabled = false;
+  function validateAction() {
+    if (!connected || isProcessing) { actionBtn.disabled = true; return; }
+    if (currentMode === "swap") {
+      const amount = parseFloat(amountInput.value);
+      if (isNaN(amount) || amount <= 0 || amount > (userBalances[selectedFrom] || 0)) actionBtn.disabled = true;
+      else actionBtn.disabled = false;
+    } else {
+      // bridge mode: basic validation
+      const amount = parseFloat(bridgeAmountInput.value);
+      if (isNaN(amount) || amount <= 0 || amount > (userBalances.USDC || 0)) actionBtn.disabled = true;
+      else actionBtn.disabled = false;
+    }
   }
 
   async function refreshUI() {
     if (connected) { await fetchTokenBalances(); await updateGasFee(); }
     if (currentMode === "swap") updateSwapQuote();
-    validateSwap();
+    validateAction();
     lucide.createIcons();
   }
 
@@ -406,7 +387,7 @@
   }
   function disconnect() { connected = false; userAddress = null; provider = null; userBalances = { USDC:0, EURC:0 }; walletAddrSpan.innerText = '⚡ not connected'; statusLed.classList.remove('bg-emerald-400'); statusLed.classList.add('bg-gray-500'); connectBtnText.innerText = 'Connect'; document.getElementById('copyAddressBtn').classList.add('hidden'); document.getElementById('disconnectBtn').classList.add('hidden'); refreshUI(); showToast('Disconnected'); }
 
-  // ========== SWAP EXECUTION (FIXED - now actually sends tx) ==========
+  // ========== SWAP EXECUTION (EXACTLY AS ORIGINAL WORKING CODE) ==========
   async function executeSwap() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -414,7 +395,7 @@
     if (amount > userBalances[selectedFrom]) { showToast(`Insufficient ${selectedFrom} balance`, true); return; }
 
     isProcessing = true;
-    swapBtn.disabled = true;
+    actionBtn.disabled = true;
     actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
 
     try {
@@ -428,7 +409,7 @@
       if (!res.ok) throw new Error(txData.error || 'Swap preparation failed');
       if (!txData.to || !txData.data) throw new Error('Invalid transaction data from backend');
 
-      // 2. Ask user to sign & send the transaction
+      // 2. Ask user to sign & send the transaction (this is what makes it work)
       actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
       const tx = {
         from: userAddress,
@@ -441,12 +422,12 @@
       const signer = provider.getSigner();
       const transactionResponse = await signer.sendTransaction(tx);
       
-      // 3. Wait for confirmation (optional, but good UX)
+      // 3. Wait for confirmation
       actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming on chain...</span>';
       await transactionResponse.wait(1);
       
       showToast(`✅ Swap successful! Tx: ${transactionResponse.hash.slice(0,10)}...`, false);
-      await refreshUI(); // update balances
+      await refreshUI();
       actionBtnText.innerHTML = 'Swap tokens';
     } catch (err) {
       console.error(err);
@@ -457,40 +438,65 @@
       actionBtnText.innerHTML = 'Swap tokens';
     } finally {
       isProcessing = false;
-      validateSwap();
+      validateAction();
     }
   }
 
-  // ========== BRIDGE EXECUTION (unchanged - works) ==========
+  // ========== BRIDGE EXECUTION (user signs burn transaction) ==========
   async function executeBridge() {
     if (!userAddress) { showToast('Connect wallet first', true); return; }
     let sourceChain = sourceChainSelect.value;
     let destChain = destChainSelect.value;
     if (sourceChain === destChain) { showToast('Source and destination chains must differ', true); return; }
-    if (!sourceChain.includes('Arc') && !destChain.includes('Arc')) { showToast('One side MUST be Arc Testnet (ARC is required)', true); return; }
+    if (!sourceChain.includes('Arc') && !destChain.includes('Arc')) { showToast('One side MUST be Arc Testnet', true); return; }
     const amount = parseFloat(bridgeAmountInput.value);
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', true); return; }
+    if (amount > userBalances.USDC) { showToast('Insufficient USDC balance', true); return; }
     let recipient = recipientAddressInput.value.trim();
     if (!recipient) recipient = userAddress;
-    if (!recipient.match(/^0x[a-fA-F0-9]{40}$/)) { showToast('Invalid recipient address (0x... )', true); return; }
-    isProcessing = true; swapBtn.disabled = true;
-    actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Bridging via CCTP...</span>';
+    if (!recipient.match(/^0x[a-fA-F0-9]{40}$/)) { showToast('Invalid recipient address', true); return; }
+
+    isProcessing = true;
+    actionBtn.disabled = true;
+    actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing bridge...</span>';
+
     try {
+      // 1. Get burn transaction from backend
       const res = await fetch(BACKEND_BRIDGE_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceChain, destChain, amount: amount.toString(), recipient, token: "USDC" })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Bridge failed');
-      showToast(`✅ Bridge initiated! Tx: ${data.transactionHash?.slice(0,12)}`, false);
-      actionBtnText.innerHTML = 'Bridge completed';
-      setTimeout(() => { actionBtnText.innerHTML = currentMode === "swap" ? "Swap tokens" : "Bridge USDC"; isProcessing = false; validateBridgeUI(); }, 3000);
-    } catch(err) { showToast(`Bridge error: ${err.message}`, true); actionBtnText.innerHTML = "Bridge USDC"; isProcessing = false; validateBridgeUI(); }
-  }
+      const txData = await res.json();
+      if (!res.ok) throw new Error(txData.error || 'Bridge preparation failed');
+      if (!txData.to || !txData.data) throw new Error('Invalid transaction data');
 
-  function validateBridgeUI() {
-    if (!connected || isProcessing || currentMode !== "bridge") swapBtn.disabled = true;
-    else swapBtn.disabled = false;
+      // 2. User signs the burn transaction
+      actionBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm burn in wallet...</span>';
+      const tx = {
+        from: userAddress,
+        to: txData.to,
+        data: txData.data,
+        value: txData.value || '0x0',
+        gasLimit: txData.gas || 500000,
+        gasPrice: txData.gasPrice
+      };
+      const signer = provider.getSigner();
+      const burnTx = await signer.sendTransaction(tx);
+      await burnTx.wait(1);
+
+      showToast(`✅ USDC burned on ${sourceChain}. Bridge in progress (mint will complete automatically). Tx: ${burnTx.hash.slice(0,10)}...`, false);
+      actionBtnText.innerHTML = 'Bridge initiated';
+      setTimeout(() => { actionBtnText.innerHTML = "Bridge USDC"; isProcessing = false; validateAction(); }, 3000);
+    } catch (err) {
+      console.error(err);
+      let friendly = err.message;
+      if (friendly.includes('user rejected')) friendly = 'Transaction rejected.';
+      showToast(`❌ Bridge failed: ${friendly}`, true);
+      actionBtnText.innerHTML = "Bridge USDC";
+      isProcessing = false;
+      validateAction();
+    }
   }
 
   function flipBridge() {
@@ -498,7 +504,7 @@
     const dst = destChainSelect.value;
     sourceChainSelect.value = dst;
     destChainSelect.value = src;
-    validateBridgeUI();
+    validateAction();
   }
 
   function updateBridgeBalanceHint() {
@@ -506,9 +512,7 @@
     bridgeUsdcBalanceLabel.innerText = `${userBalances.USDC?.toFixed(2) || 0} USDC`;
     bridgeSourceBalanceHint.innerText = `balance: ${userBalances.USDC?.toFixed(2) || 0} USDC`;
   }
-  bridgeMaxBtn.addEventListener('click', () => { if (connected) bridgeAmountInput.value = userBalances.USDC || 0; validateBridgeUI(); });
 
-  // mode switching
   function setMode(mode) {
     currentMode = mode;
     if (mode === "swap") {
@@ -517,7 +521,7 @@
       swapModeBtn.classList.add('mode-tab-active'); swapModeBtn.classList.remove('mode-tab-inactive');
       bridgeModeBtn.classList.add('mode-tab-inactive'); bridgeModeBtn.classList.remove('mode-tab-active');
       actionBtnText.innerHTML = "Swap tokens";
-      validateSwap();
+      validateAction();
     } else {
       swapContainer.classList.add('hidden');
       bridgeContainer.classList.remove('hidden');
@@ -525,7 +529,7 @@
       swapModeBtn.classList.add('mode-tab-inactive'); swapModeBtn.classList.remove('mode-tab-active');
       actionBtnText.innerHTML = "Bridge USDC";
       updateBridgeBalanceHint();
-      validateBridgeUI();
+      validateAction();
     }
     lucide.createIcons();
   }
@@ -538,18 +542,19 @@
   maxBtn.addEventListener('click', () => { if(connected) amountInput.value = userBalances[selectedFrom]; refreshUI(); });
   amountInput.addEventListener('input', refreshUI);
   document.querySelectorAll('.percentBtn').forEach(btn => btn.addEventListener('click', () => { if(connected) amountInput.value = (userBalances[selectedFrom] * parseFloat(btn.dataset.percent)).toFixed(6); refreshUI(); }));
-  document.querySelectorAll('.slippagePreset').forEach(btn => btn.addEventListener('click', () => { currentSlippage = parseFloat(btn.dataset.slippage); document.getElementById('slippageValue').innerText = `${currentSlippage}%`; refreshUI(); }));
+  document.querySelectorAll('.slippagePreset').forEach(btn => btn.addEventListener('click', () => { currentSlippage = parseFloat(btn.dataset.slippage); refreshUI(); }));
   document.getElementById('advancedToggle').addEventListener('click', () => { document.getElementById('advancedPanel').classList.toggle('hidden'); document.getElementById('chevronAdv').style.transform = document.getElementById('advancedPanel').classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)'; });
   swapModeBtn.addEventListener('click', () => setMode('swap'));
   bridgeModeBtn.addEventListener('click', () => setMode('bridge'));
   flipBridgeBtn.addEventListener('click', flipBridge);
-  sourceChainSelect.addEventListener('change', validateBridgeUI);
-  destChainSelect.addEventListener('change', validateBridgeUI);
-  bridgeAmountInput.addEventListener('input', validateBridgeUI);
-  recipientAddressInput.addEventListener('input', validateBridgeUI);
-  swapBtn.addEventListener('click', () => { if(currentMode === 'swap') executeSwap(); else executeBridge(); });
+  sourceChainSelect.addEventListener('change', validateAction);
+  destChainSelect.addEventListener('change', validateAction);
+  bridgeAmountInput.addEventListener('input', validateAction);
+  recipientAddressInput.addEventListener('input', validateAction);
+  bridgeMaxBtn.addEventListener('click', () => { if (connected) bridgeAmountInput.value = userBalances.USDC || 0; validateAction(); });
+  actionBtn.addEventListener('click', () => { if(currentMode === 'swap') executeSwap(); else executeBridge(); });
 
-  // Token modal for swap
+  // Token modal
   const fromTokenBtnElem = document.getElementById('fromTokenBtn');
   const toTokenBtnElem = document.getElementById('toTokenBtn');
   const tokenModalDiv = document.getElementById('tokenModal');
