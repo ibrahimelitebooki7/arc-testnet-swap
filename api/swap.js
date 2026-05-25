@@ -33,7 +33,6 @@ export default async function handler(req, res) {
     };
 
     const result = await kit.swap(params);
-
     const transaction = {
       to: result.to,
       data: result.data,
