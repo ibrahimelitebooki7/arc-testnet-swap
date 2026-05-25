@@ -2,6 +2,7 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
+  // CORS for your frontend
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -15,12 +16,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    // These must be set in Vercel environment variables
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
       throw new Error("Missing KIT_KEY or PRIVATE_KEY environment variables");
     }
 
     const kit = new AppKit();
-    const adapter = createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+    const adapter = createViemAdapterFromPrivateKey({
+      privateKey: process.env.PRIVATE_KEY,
+    });
 
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
