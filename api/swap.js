@@ -11,11 +11,9 @@ export default async function handler(req, res) {
 
   try {
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
-
     if (!tokenIn || !tokenOut || !amountIn) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
       throw new Error("Missing KIT_KEY or PRIVATE_KEY environment variables");
     }
@@ -25,6 +23,7 @@ export default async function handler(req, res) {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    // Use the exact chain name expected by the SDK
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
       tokenIn,
@@ -34,8 +33,6 @@ export default async function handler(req, res) {
     };
 
     const result = await kit.swap(params);
-
-    // Return the transaction object exactly as the frontend expects
     const transaction = {
       to: result.to,
       data: result.data,
