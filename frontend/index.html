@@ -214,16 +214,17 @@
 </div>
 
 <script>
-  // ========== OFFICIAL ARC TESTNET CONTRACT ADDRESSES ==========
-  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
-  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+  // ========== OFFICIAL ARC TESTNET ADDRESSES ==========
+  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000'; // ERC‑20 interface, 6 decimals
+  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a'; // 6 decimals
   const ERC20_ABI = [
     "function balanceOf(address owner) view returns (uint256)",
     "function decimals() view returns (uint8)",
-    "function symbol() view returns (string)"
+    "function symbol() view returns (string)",
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)"
   ];
 
-  // ========== BACKEND URL ==========
   const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
   const EXPECTED_CHAIN_ID = 5042002;
 
@@ -237,7 +238,7 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements (same as before)
+  // DOM elements (same as before – no change needed)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -278,22 +279,20 @@
     setTimeout(() => toast.classList.remove('toast-show'), 4000);
   }
 
-  faucetBtn.addEventListener('click', () => {
-    window.open('https://faucet.circle.com/', '_blank');
-    showToast('Opening Circle Faucet – request USDC/EURC on Arc Testnet');
-  });
+  faucetBtn.addEventListener('click', () => window.open('https://faucet.circle.com/', '_blank'));
   guideBtn.addEventListener('click', () => guideModal.classList.add('active'));
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION ==========
-  async function ensureArcNetwork(ethereumProvider) {
+  // ========== WALLET CONNECTION (provider recreated after network switch) ==========
+  async function ensureArcNetwork() {
+    if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
-      await ethereumProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
     } catch (switchError) {
       if (switchError.code === 4902) {
-        await ethereumProvider.request({ method: 'wallet_addEthereumChain', params: [{
+        await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
           chainId: chainIdHex,
           chainName: 'Arc Testnet',
           nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
@@ -311,18 +310,20 @@
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts.length) throw new Error('No accounts');
       userAddress = accounts[0];
+      // Switch network FIRST
+      await ensureArcNetwork();
+      // THEN create provider
       provider = new ethers.providers.Web3Provider(window.ethereum);
-      await ensureArcNetwork(window.ethereum);
       const network = await provider.getNetwork();
-      if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Please switch to Arc Testnet');
+      if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Network switch failed');
       connected = true;
       walletAddrSpan.innerText = `${userAddress.slice(0,6)}...${userAddress.slice(-4)} on Arc`;
       statusLed.classList.add('bg-emerald-400'); statusLed.classList.remove('bg-gray-500');
       connectBtnText.innerText = 'Connected';
       copyBtn.classList.remove('hidden'); disconnectWalletBtn.classList.remove('hidden');
       showToast('Connected to Arc Testnet');
-      tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
-      tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
+      tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider.getSigner());
+      tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider.getSigner());
       await refreshUI();
     } catch (err) { showToast(err.message, true); }
   }
@@ -339,37 +340,26 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); } });
 
-// ========== TOKEN ADDRESSES (Arc Testnet) ==========
-const NATIVE_USDC_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"; // common native placeholder
-const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a'; // verify from explorer
-
-const ERC20_ABI = [ /* same as before */ ];
-
-// ========== FETCH NATIVE USDC BALANCE ==========
-async function fetchBalances() {
-  if (!connected || !provider) return;
-
-  try {
-    // Native USDC balance (gas token)
-    const nativeBalanceWei = await provider.getBalance(userAddress);
-    const nativeDecimals = 18; // USDC on Arc has 18 decimals (verify)
-    userBalances.USDC = parseFloat(ethers.utils.formatUnits(nativeBalanceWei, nativeDecimals));
-
-    // EURC balance (ERC-20)
-    const eurcContract = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
-    const eurcBalanceWei = await eurcContract.balanceOf(userAddress);
-    const eurcDecimals = await eurcContract.decimals();
-    userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalanceWei, eurcDecimals));
-
-    console.log(`✅ Native USDC: ${userBalances.USDC}, EURC: ${userBalances.EURC}`);
-  } catch (err) {
-    console.warn("Balance fetch error – fallback to demo", err);
-    userBalances.USDC = 20;
-    userBalances.EURC = 20;
+  // ========== REAL BALANCE FETCHING – NO MOCKS ==========
+  async function fetchBalances() {
+    if (!connected || !provider) return;
+    try {
+      const usdcBalanceWei = await tokenContracts.USDC.balanceOf(userAddress);
+      const usdcDecimals = await tokenContracts.USDC.decimals(); // should be 6
+      userBalances.USDC = parseFloat(ethers.utils.formatUnits(usdcBalanceWei, usdcDecimals));
+      const eurcBalanceWei = await tokenContracts.EURC.balanceOf(userAddress);
+      const eurcDecimals = await tokenContracts.EURC.decimals(); // should be 6
+      userBalances.EURC = parseFloat(ethers.utils.formatUnits(eurcBalanceWei, eurcDecimals));
+      console.log(`✅ Real balances: USDC = ${userBalances.USDC}, EURC = ${userBalances.EURC}`);
+    } catch (err) {
+      console.error("Balance fetch error:", err);
+      userBalances.USDC = 0;
+      userBalances.EURC = 0;
+      showToast("Failed to fetch balances", true);
+    }
+    updateBalanceUI();
+    validateSwap();
   }
-  updateBalanceUI();
-  validateSwap();
-}
 
   function updateBalanceUI() {
     if (!connected) {
@@ -381,23 +371,21 @@ async function fetchBalances() {
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION ==========
+  // ========== GAS ESTIMATION – NO FORCED MIN GAS ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
       const feeData = await provider.getFeeData();
       let maxFeePerGas = feeData.maxFeePerGas || feeData.gasPrice;
       if (!maxFeePerGas) throw new Error("No fee data");
-      const minFeeWei = ethers.utils.parseUnits("160", "gwei");
-      if (maxFeePerGas.lt(minFeeWei)) maxFeePerGas = minFeeWei;
+      // Use a reasonable gas limit for a swap (adjust if needed)
       const gasLimit = ethers.BigNumber.from(350000);
       const totalWei = gasLimit.mul(maxFeePerGas);
-      const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
+      const totalUSDC = ethers.utils.formatUnits(totalWei, 18); // gas is paid in native USDC (18 decimals)
       gasEstimateSpan.innerText = `~${parseFloat(totalUSDC).toFixed(6)} USDC`;
     } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
 
-  // ========== QUOTE UPDATE ==========
   function updateQuote() {
     if (!connected) {
       receiveField.value = '';
@@ -420,7 +408,6 @@ async function fetchBalances() {
     rateDynamicSpan.innerText = selectedFrom === 'USDC' ? '1 USDC ≈ 0.978 EURC' : '1 EURC ≈ 1.023 USDC';
   }
 
-  // ========== VALIDATION – THE FIX ==========
   function validateSwap() {
     if (!connected || isProcessing) {
       swapBtn.disabled = true;
@@ -428,12 +415,10 @@ async function fetchBalances() {
     }
     const amount = parseFloat(amountInput.value);
     const balance = userBalances[selectedFrom] || 0;
-    // Allow if amount is positive and ≤ balance
     const isValid = !isNaN(amount) && amount > 0 && amount <= balance;
     swapBtn.disabled = !isValid;
-    // Optional: log for debugging
     if (connected && !isProcessing) {
-      console.log(`Validate: amount=${amount}, balance=${balance}, isValid=${isValid}, disabled=${swapBtn.disabled}`);
+      console.log(`Validate: amount=${amount}, balance=${balance}, isValid=${isValid}`);
     }
   }
 
@@ -443,31 +428,11 @@ async function fetchBalances() {
       await updateGasFee(); 
     }
     updateQuote();
-    validateSwap(); // extra call
+    validateSwap();
     lucide.createIcons();
   }
 
-  async function ensureAllowance() {
-  if (selectedFrom !== "EURC") return true; // native USDC needs no approval
-
-  const eurcContract = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
-  const spender = "0x..."; // the swap contract address (returned by backend or known constant)
-  const allowance = await eurcContract.allowance(userAddress, spender);
-  const amount = ethers.utils.parseUnits(amountInput.value, await eurcContract.decimals());
-
-  if (allowance.gte(amount)) return true;
-
-  showToast("Approving EURC spend...");
-  const approveTx = await eurcContract.approve(spender, amount);
-  await approveTx.wait();
-  showToast("Approval confirmed");
-  return true;
-}
-
-// Inside executeSwap, before calling backend:
-if (!(await ensureAllowance())) return;
-  
-  // ========== SWAP EXECUTION ==========
+  // ========== SWAP EXECUTION WITH PROPER APPROVAL ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -480,6 +445,7 @@ if (!(await ensureAllowance())) return;
     lucide.createIcons();
 
     try {
+      // 1. Get swap transaction from backend
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -493,7 +459,25 @@ if (!(await ensureAllowance())) return;
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to prepare transaction');
 
-      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm in wallet...</span>';
+      // 2. Token contract & decimals
+      const tokenAddress = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
+      const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
+      const decimals = await token.decimals(); // should be 6
+      const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
+      const spender = data.to; // the router contract
+
+      // 3. Check allowance and approve if needed
+      const allowance = await token.allowance(userAddress, spender);
+      if (allowance.lt(amountWei)) {
+        swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Approving token...</span>';
+        showToast(`Approving ${selectedFrom}...`, false);
+        const approveTx = await token.approve(spender, amountWei);
+        await approveTx.wait();
+        showToast(`Approval confirmed`, false);
+      }
+
+      // 4. Send swap transaction
+      swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm swap in wallet...</span>';
       const tx = {
         from: userAddress,
         to: data.to,
@@ -503,14 +487,18 @@ if (!(await ensureAllowance())) return;
         gasLimit: ethers.BigNumber.from(data.gas || 500000)
       };
       const sendTx = await provider.getSigner().sendTransaction(tx);
-      showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}... confirming`, false);
+      showToast(`Swap submitted! Tx: ${sendTx.hash.slice(0,10)}...`, false);
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirming...</span>';
       await sendTx.wait(1);
       showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo} completed.`, false);
       swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
       lucide.createIcons();
       await refreshUI();
-      setTimeout(() => { swapBtnText.innerHTML = "Swap tokens"; isProcessing = false; validateSwap(); }, 2000);
+      setTimeout(() => {
+        swapBtnText.innerHTML = "Swap tokens";
+        isProcessing = false;
+        validateSwap();
+      }, 2000);
     } catch (err) {
       console.error(err);
       let friendly = err.message;
@@ -523,7 +511,7 @@ if (!(await ensureAllowance())) return;
     }
   }
 
-  // ========== UI EVENT HANDLERS ==========
+  // ========== UI EVENT HANDLERS (unchanged) ==========
   flipBtn.addEventListener('click', () => {
     let tmp = selectedFrom; selectedFrom = selectedTo; selectedTo = tmp;
     fromTokenSymbolSpan.innerText = selectedFrom;
@@ -574,7 +562,7 @@ if (!(await ensureAllowance())) return;
     showToast(`✨ AI insight: Network fees are ${gasEstimateSpan.innerText}. Use 0.5% slippage for stable pairs.`);
   });
 
-  // ========== TOKEN SELECTOR MODAL ==========
+  // ========== TOKEN SELECTOR MODAL (no change) ==========
   const tokenList = [
     { symbol:"USDC", name:"USD Coin", icon:"circle-dollar-sign" },
     { symbol:"EURC", name:"Euro Coin", icon:"euro" }
@@ -613,7 +601,7 @@ if (!(await ensureAllowance())) return;
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // ========== SPARKLINE ==========
+  // ========== SPARKLINE (cosmetic) ==========
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
