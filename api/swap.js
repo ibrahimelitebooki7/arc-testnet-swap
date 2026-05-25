@@ -2,7 +2,6 @@ import { AppKit } from "@circle-fin/app-kit";
 import { createViemAdapterFromPrivateKey } from "@circle-fin/adapter-viem-v2";
 
 export default async function handler(req, res) {
-  // CORS for your frontend
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,8 +11,8 @@ export default async function handler(req, res) {
 
   try {
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
-    if (!tokenIn || !tokenOut || !amountIn) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!tokenIn || !tokenOut || !amountIn || !walletAddress) {
+      return res.status(400).json({ error: "Missing required fields (tokenIn, tokenOut, amountIn, walletAddress)" });
     }
 
     // These must be set in Vercel environment variables
@@ -26,11 +25,13 @@ export default async function handler(req, res) {
       privateKey: process.env.PRIVATE_KEY,
     });
 
+    // 🔥 CRITICAL: Pass the user's wallet address to the kit
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
       tokenIn,
       tokenOut,
       amountIn: amountIn.toString(),
+      userAddress: walletAddress,   // <-- this ensures the quote is for the user
       config: { kitKey: process.env.KIT_KEY },
     };
 
@@ -45,6 +46,7 @@ export default async function handler(req, res) {
     return res.status(200).json(transaction);
   } catch (error) {
     console.error("Swap error:", error);
+    // Return a clear error message that will be shown in the frontend toast
     return res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
