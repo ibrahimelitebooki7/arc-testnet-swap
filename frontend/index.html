@@ -58,7 +58,6 @@
 
 <main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10 relative z-10">
   <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
-    <!-- header -->
     <div class="flex justify-between items-center mb-5">
       <div class="flex items-center gap-2">
         <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
@@ -77,7 +76,6 @@
       </div>
     </div>
 
-    <!-- wallet status -->
     <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
       <div class="flex items-center gap-2">
         <div id="statusLed" class="w-2 h-2 rounded-full bg-gray-500"></div>
@@ -105,7 +103,6 @@
       </div>
     </div>
 
-    <!-- swap arrow -->
     <div class="flex justify-center -my-1 relative z-10">
       <button id="flipSwapBtn" class="bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
         <i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i>
@@ -124,13 +121,11 @@
       <div class="flex justify-between mt-1 items-center"><span id="minReceiveHint" class="text-[11px] text-slate-400 font-mono">—</span></div>
     </div>
 
-    <!-- rate row + sparkline + AI -->
     <div class="flex flex-wrap items-center justify-between gap-2 bg-black/20 rounded-xl px-3 py-2 text-xs text-slate-300 mb-2">
       <div class="flex items-center gap-2"><i data-lucide="refresh-cw" class="w-3 h-3"></i><span id="rateDynamic">1 USDC ≈ 0.978 EURC</span><canvas id="sparklineCanvas" width="80" height="24" style="width:80px;height:24px" class="bg-black/30 rounded"></canvas></div>
       <button id="aiSparkBtn" class="flex items-center gap-1 bg-purple-500/20 rounded-full px-2 py-1"><i data-lucide="sparkles" class="w-3 h-3 text-purple-300"></i> AI</button>
     </div>
 
-    <!-- advanced settings -->
     <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
       <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
         <div class="flex gap-3 items-center"><i data-lucide="fuel" class="w-3 h-3"></i><span id="gasEstimate">Fetching gas...</span><div class="flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3"></i><span id="slippageValue">0.5%</span></div></div>
@@ -142,7 +137,6 @@
       </div>
     </div>
 
-    <!-- swap button -->
     <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
       <span id="swapBtnText">Swap tokens</span>
     </button>
@@ -156,13 +150,8 @@
 <div id="guideModal" class="guide-modal"><div class="guide-drawer p-5"><div class="flex justify-between mb-4"><h3 class="text-white font-semibold flex gap-2"><i data-lucide="help-circle"></i> How to Swap</h3><button id="closeGuideBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button></div><div class="space-y-4 text-slate-300 text-sm"><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">1</div><p>Connect wallet (MetaMask/Rabby).</p></div><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">2</div><p>Get test tokens from <strong>Faucet</strong> (Circle Faucet).</p></div><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">3</div><p>Enter amount, confirm swap.</p></div></div></div></div>
 
 <script>
-  // ========== CONFIGURATION ==========
-  // DEMO_MODE = true: no backend, simulated swaps (perfect for presentations)
-  // DEMO_MODE = false: real on‑chain swaps (requires backend deployed with KIT_KEY & PRIVATE_KEY)
-  const DEMO_MODE = true;  // ✅ CHANGE TO false ONLY when your backend is ready
-
-  // Only used when DEMO_MODE = false
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // your backend URL
+  // ========== REAL MODE – UPDATE THIS URL ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ Your deployed backend URL
 
   // Official Arc Testnet contract addresses (ERC-20 interface)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
@@ -182,7 +171,7 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements
+  // DOM elements (same as before, omitted for brevity)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -228,7 +217,7 @@
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION (real, works in both modes) ==========
+  // ========== WALLET CONNECTION ==========
   async function ensureArcNetwork() {
     if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
@@ -264,11 +253,8 @@
       connectBtnText.innerText = 'Connected';
       copyBtn.classList.remove('hidden'); disconnectWalletBtn.classList.remove('hidden');
       showToast('Connected to Arc Testnet');
-
-      // Initialize token contracts for real balance fetching
       tokenContracts.USDC = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider.getSigner());
       tokenContracts.EURC = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider.getSigner());
-
       await refreshUI();
     } catch (err) { showToast(err.message, true); }
   }
@@ -284,7 +270,7 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Copied'); } });
 
-  // ========== BALANCE FETCHING (real, works in both modes) ==========
+  // ========== BALANCE FETCHING (real, no mocks) ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
     try {
@@ -297,16 +283,9 @@
       console.log(`Balances: USDC=${userBalances.USDC}, EURC=${userBalances.EURC}`);
     } catch (err) {
       console.error("Balance fetch error", err);
-      // In demo mode, fallback to mock balances so UI always looks good
-      if (DEMO_MODE) {
-        userBalances.USDC = 20;
-        userBalances.EURC = 20;
-        console.log("Demo mode: using mock balances 20 USDC / 20 EURC");
-      } else {
-        userBalances.USDC = 0;
-        userBalances.EURC = 0;
-        showToast("Failed to fetch balances", true);
-      }
+      userBalances.USDC = 0;
+      userBalances.EURC = 0;
+      showToast("Failed to fetch balances", true);
     }
     updateBalanceUI(); validateSwap();
   }
@@ -317,7 +296,6 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
@@ -359,7 +337,7 @@
     lucide.createIcons();
   }
 
-  // ========== SWAP EXECUTION (two versions) ==========
+  // ========== REAL SWAP EXECUTION (with approval) ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -368,30 +346,9 @@
 
     isProcessing = true;
     swapBtn.disabled = true;
-    swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Processing swap...</span>';
+    swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Preparing swap...</span>';
     lucide.createIcons();
 
-    if (DEMO_MODE) {
-      // DEMO MODE: simulated swap (no backend, no real transaction)
-      setTimeout(() => {
-        const rate = (selectedFrom === 'USDC' && selectedTo === 'EURC') ? 0.978 : 1.023;
-        const outAmount = amount * rate;
-        userBalances[selectedFrom] -= amount;
-        userBalances[selectedTo] += outAmount;
-        updateBalanceUI();
-        showToast(`✅ Demo: Swapped ${amount.toFixed(4)} ${selectedFrom} → ${outAmount.toFixed(4)} ${selectedTo} (simulated)`, false);
-        swapBtnText.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Done!';
-        lucide.createIcons();
-        setTimeout(() => {
-          swapBtnText.innerHTML = "Swap tokens";
-          isProcessing = false;
-          validateSwap();
-        }, 1500);
-      }, 1000);
-      return;
-    }
-
-    // REAL MODE: on‑chain swap with approval
     try {
       // 1. Get swap transaction from backend
       const response = await fetch(BACKEND_URL, {
@@ -410,7 +367,7 @@
       // 2. Token contract & decimals
       const tokenAddress = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
-      const decimals = await token.decimals();
+      const decimals = await token.decimals(); // should be 6
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
       const spender = data.to;
 
