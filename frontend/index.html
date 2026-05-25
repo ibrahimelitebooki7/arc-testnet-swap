@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Xroga · Arc Swap 2026 – Demo + Real Fallback</title>
+  <title>Xroga · Arc Swap – REAL</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -36,6 +36,7 @@
       </div>
     </div>
 
+    <!-- FROM -->
     <div class="bg-black/20 rounded-2xl p-4 mb-3">
       <div class="flex justify-between text-xs text-slate-400"><span>You pay</span><span id="fromBalance">—</span></div>
       <div class="flex items-center gap-3 mt-1">
@@ -56,6 +57,7 @@
       <button id="flipBtn" class="bg-slate-800 rounded-full p-2 border border-blue-500/40"><i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i></button>
     </div>
 
+    <!-- TO -->
     <div class="bg-black/20 rounded-2xl p-4 mt-1 mb-3">
       <div class="flex justify-between text-xs text-slate-400"><span>You receive</span><span id="toBalance">—</span></div>
       <div class="flex items-center gap-3 mt-1">
@@ -88,9 +90,10 @@
 </main>
 
 <script>
-  // ========== BACKEND URL (unchanged) ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';
+  // ========== BACKEND URL ==========
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // change to your actual backend URL
 
+  // Official Arc Testnet addresses (ERC-20 interface, 6 decimals)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
   const ERC20_ABI = [
@@ -106,7 +109,7 @@
   let balances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements
+  // DOM elements (same as before)
   const connectBtn = document.getElementById('connectBtn');
   const connectText = document.getElementById('connectText');
   const walletShort = document.getElementById('walletShort');
@@ -141,7 +144,7 @@
     setTimeout(() => toast.classList.add('opacity-0'), 4000);
   }
 
-  // Wallet connection
+  // ========== WALLET CONNECTION ==========
   async function ensureArcNetwork() {
     const hex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
@@ -177,6 +180,7 @@
     } catch (err) { showToast(err.message, true); }
   }
 
+  // ========== BALANCE FETCH ==========
   async function refreshBalances() {
     if (!connected) return;
     try {
@@ -187,10 +191,9 @@
       const eurcDec = await tokenContracts.EURC.decimals();
       balances.EURC = parseFloat(ethers.utils.formatUnits(eurcWei, eurcDec));
       console.log(`Balances: USDC=${balances.USDC}, EURC=${balances.EURC}`);
-      if (balances.USDC === 0) showToast('No USDC – use faucet', true);
     } catch (err) {
       console.error(err);
-      balances.USDC = 0; balances.EURC = 0;
+      showToast('Failed to fetch balances', true);
     }
     updateBalanceUI();
     validateSwap();
@@ -244,7 +247,7 @@
     lucide.createIcons();
   }
 
-  // ========== SWAP WITH DEMO FALLBACK ==========
+  // ========== REAL SWAP EXECUTION ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -256,21 +259,27 @@
     const originalText = swapButton.innerText;
     swapButton.innerText = 'Preparing swap...';
 
-    // Try real swap first
     try {
+      // 1. Get swap transaction from backend
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokenIn: selectedFrom, tokenOut: selectedTo, amountIn: amount.toString(), walletAddress: userAddress })
+        body: JSON.stringify({
+          tokenIn: selectedFrom,
+          tokenOut: selectedTo,
+          amountIn: amount.toString(),
+          walletAddress: userAddress   // important: send the user's address
+        })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Backend error');
 
+      // 2. Token approval
       const tokenAddr = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddr, ERC20_ABI, provider.getSigner());
       const decimals = await token.decimals();
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to;
+      const spender = data.to; // router address
       const allowance = await token.allowance(userAddress, spender);
       if (allowance.lt(amountWei)) {
         swapButton.innerText = 'Approving token...';
@@ -278,6 +287,8 @@
         await approveTx.wait();
         showToast('Approval confirmed');
       }
+
+      // 3. Send swap transaction (wallet confirmation popup appears)
       swapButton.innerText = 'Confirm in wallet...';
       const tx = {
         from: userAddress,
@@ -300,20 +311,12 @@
         validateSwap();
       }, 2000);
     } catch (err) {
-      console.error('Real swap failed, falling back to demo mode', err);
-      // 🔥 DEMO FALLBACK – simulated swap
-      const rate = (selectedFrom === 'USDC' && selectedTo === 'EURC') ? 0.978 : 1.023;
-      const outAmount = amount * rate;
-      balances[selectedFrom] -= amount;
-      balances[selectedTo] += outAmount;
-      updateBalanceUI();
-      showToast(`✅ Demo: Swapped ${amount.toFixed(4)} ${selectedFrom} → ${outAmount.toFixed(4)} ${selectedTo} (simulated)`, false);
-      swapButton.innerText = 'Done!';
-      setTimeout(() => {
-        swapButton.innerText = originalText;
-        processing = false;
-        validateSwap();
-      }, 1500);
+      console.error(err);
+      let msg = err.message.includes('user rejected') ? 'Transaction rejected' : err.message;
+      showToast(`❌ Swap failed: ${msg}`, true);
+      swapButton.innerText = originalText;
+      processing = false;
+      validateSwap();
     }
   }
 
@@ -358,7 +361,7 @@
   fromTokenBtn.onclick = () => renderTokenModal('from');
   toTokenBtn.onclick = () => renderTokenModal('to');
 
-  // Sparkline
+  // Sparkline (cosmetic)
   const canvas = document.createElement('canvas'); canvas.width = 80; canvas.height = 24; canvas.className = 'bg-black/30 rounded ml-2';
   const rateContainer = document.querySelector('.flex.items-center.gap-2');
   if (rateContainer) rateContainer.appendChild(canvas);
