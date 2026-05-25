@@ -12,10 +12,9 @@ export default async function handler(req, res) {
   try {
     const { tokenIn, tokenOut, amountIn, walletAddress } = req.body;
     if (!tokenIn || !tokenOut || !amountIn || !walletAddress) {
-      return res.status(400).json({ error: "Missing required fields (tokenIn, tokenOut, amountIn, walletAddress)" });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // These must be set in Vercel environment variables
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
       throw new Error("Missing KIT_KEY or PRIVATE_KEY environment variables");
     }
@@ -25,13 +24,12 @@ export default async function handler(req, res) {
       privateKey: process.env.PRIVATE_KEY,
     });
 
-    // 🔥 CRITICAL: Pass the user's wallet address to the kit
     const params = {
       from: { adapter, chain: "Arc_Testnet" },
       tokenIn,
       tokenOut,
       amountIn: amountIn.toString(),
-      userAddress: walletAddress,   // <-- this ensures the quote is for the user
+      userAddress: walletAddress,   // 🔥 CRITICAL: pass the user's address
       config: { kitKey: process.env.KIT_KEY },
     };
 
@@ -46,7 +44,6 @@ export default async function handler(req, res) {
     return res.status(200).json(transaction);
   } catch (error) {
     console.error("Swap error:", error);
-    // Return a clear error message that will be shown in the frontend toast
     return res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
