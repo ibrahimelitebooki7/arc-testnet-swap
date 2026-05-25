@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Xroga · Arc Swap 2026 – Demo + Real</title>
+  <title>Xroga · Arc Swap 2026 – REAL</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -13,19 +13,15 @@
     body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .glass-panel { background: rgba(12,20,32,0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59,130,246,0.2); border-radius: 2rem; padding: 1.5rem; max-width: 480px; width: 100%; }
     button { transition: all 0.2s; }
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 18px; color: white; font-size: 13px; z-index: 1000; pointer-events: none; white-space: nowrap; }
-    .badge-demo { background: #f59e0b; color: black; font-size: 10px; padding: 2px 6px; border-radius: 20px; margin-left: 8px; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 18px; color: white; font-size: 13px; z-index: 1000; pointer-events: none; white-space: nowrap; transition: opacity 0.2s; }
   </style>
 </head>
 <body>
-<div id="toast" class="toast opacity-0 transition-opacity">✨ Ready</div>
+<div id="toast" class="toast opacity-0">✨ Ready</div>
 <main>
   <div class="glass-panel">
     <div class="flex justify-between items-center mb-5">
-      <div class="flex items-center gap-2">
-        <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
-        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">ARC testnet</span>
-      </div>
+      <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
       <button id="connectBtn" class="bg-slate-800 hover:bg-slate-700 rounded-full px-4 py-1.5 text-sm flex items-center gap-2">
         <i data-lucide="wallet" class="w-4 h-4"></i><span id="connectText">Connect</span>
       </button>
@@ -35,14 +31,8 @@
         <div id="led" class="w-2 h-2 rounded-full bg-gray-500"></div>
         <span id="walletShort">⚡ not connected</span>
       </div>
-      <div class="flex gap-2">
-        <button id="refreshBalanceBtn" class="text-blue-400 hover:text-blue-300 underline">⟳ Refresh</button>
-        <button id="forceDemoBtn" class="text-orange-400 hover:text-orange-300 underline text-xs">Force Demo Mode</button>
-      </div>
+      <button id="refreshBtn" class="text-blue-400 hover:text-blue-300 underline">⟳ Refresh balance</button>
     </div>
-
-    <!-- Demo mode indicator -->
-    <div id="demoBadge" class="hidden text-center mb-3 text-xs bg-orange-500/20 text-orange-300 py-1 rounded-full">⚠️ Demo Mode (simulated swaps)</div>
 
     <!-- FROM -->
     <div class="bg-black/20 rounded-2xl p-4 mb-3">
@@ -54,10 +44,10 @@
         <input type="number" id="amount" value="1.0" step="0.5" class="bg-transparent text-right text-2xl text-white w-full outline-none">
       </div>
       <div class="flex justify-end gap-2 mt-2">
-        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.25">25%</button>
-        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.5">50%</button>
-        <button class="percentBtn text-xs px-2 py-0.5 rounded-full bg-slate-700" data-pct="0.75">75%</button>
-        <button id="maxBtn" class="text-xs px-2 py-0.5 rounded-full bg-slate-700 flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
+        <button class="percentBtn" data-pct="0.25">25%</button>
+        <button class="percentBtn" data-pct="0.5">50%</button>
+        <button class="percentBtn" data-pct="0.75">75%</button>
+        <button id="maxBtn" class="flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
       </div>
     </div>
 
@@ -89,7 +79,7 @@
       </div>
       <div id="advPanel" class="hidden mt-2 pt-2 border-t border-white/10">
         <div class="flex justify-between"><span class="text-xs">MEV protection</span><label><input type="checkbox" id="mev" class="toggle"></label></div>
-        <div class="mt-1"><span class="text-xs">Slippage</span><div class="flex gap-2 mt-1"><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="0.1">0.1%</button><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="0.5">0.5%</button><button class="slippagePreset text-xs px-2 py-0.5 rounded bg-slate-700" data-slip="1">1%</button></div></div>
+        <div><span class="text-xs">Slippage</span><div class="flex gap-2 mt-1"><button class="slippagePreset" data-slip="0.1">0.1%</button><button class="slippagePreset" data-slip="0.5">0.5%</button><button class="slippagePreset" data-slip="1">1%</button></div></div>
       </div>
     </div>
 
@@ -98,18 +88,24 @@
 </main>
 
 <script>
-  // ========== CONFIGURATION (real backend – optional) ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // your backend URL (can be wrong – demo will fallback)
+  // ========== CONFIGURATION – CHANGE THIS ==========
+  const BACKEND_URL = 'https://your-project.vercel.app/api/swap'; // 👈 REPLACE WITH YOUR BACKEND URL
+
+  // Official Arc Testnet addresses (ERC-20 interface)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
   const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
-  const ERC20_ABI = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)", "function approve(address,uint256) returns (bool)", "function allowance(address,address) view returns (uint256)"];
+  const ERC20_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function approve(address,uint256) returns (bool)",
+    "function allowance(address,address) view returns (uint256)"
+  ];
   const EXPECTED_CHAIN_ID = 5042002;
 
   let userAddress = null, provider = null, connected = false;
   let selectedFrom = "USDC", selectedTo = "EURC", slippage = 0.5, processing = false;
   let balances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
-  let demoMode = false; // automatically set if real balance fetch fails or backend unavailable
 
   // DOM elements
   const connectBtn = document.getElementById('connectBtn');
@@ -125,9 +121,17 @@
   const gasSpan = document.getElementById('gasEstimate');
   const slippageSpan = document.getElementById('slippageVal');
   const swapButton = document.getElementById('swapBtn');
-  const refreshBtn = document.getElementById('refreshBalanceBtn');
-  const forceDemoBtn = document.getElementById('forceDemoBtn');
-  const demoBadge = document.getElementById('demoBadge');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const maxBtn = document.getElementById('maxBtn');
+  const flipBtn = document.getElementById('flipBtn');
+  const fromTokenBtn = document.getElementById('fromTokenBtn');
+  const toTokenBtn = document.getElementById('toTokenBtn');
+  const fromSymbolSpan = document.getElementById('fromSymbol');
+  const toSymbolSpan = document.getElementById('toSymbol');
+  const aiBtn = document.getElementById('aiBtn');
+  const advToggle = document.getElementById('advToggle');
+  const advPanel = document.getElementById('advPanel');
+  const chevron = document.getElementById('chevron');
 
   function showToast(msg, isError = false) {
     const toast = document.getElementById('toast');
@@ -137,24 +141,7 @@
     setTimeout(() => toast.classList.add('opacity-0'), 4000);
   }
 
-  function setDemoMode(enable) {
-    demoMode = enable;
-    if (demoMode) {
-      demoBadge.classList.remove('hidden');
-      showToast('⚠️ Demo Mode ACTIVE – swaps are simulated', false);
-      // set mock balances for UI
-      balances.USDC = 20;
-      balances.EURC = 10;
-      updateBalanceUI();
-      validateSwap();
-    } else {
-      demoBadge.classList.add('hidden');
-      // re-fetch real balances
-      refreshBalances();
-    }
-  }
-
-  // ========== WALLET CONNECTION ==========
+  // ========== WALLET & NETWORK ==========
   async function ensureArcNetwork() {
     const hex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
     try {
@@ -190,28 +177,24 @@
     } catch (err) { showToast(err.message, true); }
   }
 
-  // ========== BALANCE FETCH (real) ==========
+  // ========== BALANCE FETCH (real, 6 decimals) ==========
   async function refreshBalances() {
     if (!connected) return;
     try {
       const usdcWei = await tokenContracts.USDC.balanceOf(userAddress);
       const usdcDec = await tokenContracts.USDC.decimals();
-      const realUsdc = parseFloat(ethers.utils.formatUnits(usdcWei, usdcDec));
+      balances.USDC = parseFloat(ethers.utils.formatUnits(usdcWei, usdcDec));
       const eurcWei = await tokenContracts.EURC.balanceOf(userAddress);
       const eurcDec = await tokenContracts.EURC.decimals();
-      const realEurc = parseFloat(ethers.utils.formatUnits(eurcWei, eurcDec));
-      console.log(`Real balances: USDC=${realUsdc}, EURC=${realEurc}`);
-      if (realUsdc > 0 || realEurc > 0) {
-        balances.USDC = realUsdc;
-        balances.EURC = realEurc;
-        if (demoMode) setDemoMode(false); // exit demo if real balances exist
-      } else {
-        // No real tokens – switch to demo automatically
-        if (!demoMode) setDemoMode(true);
+      balances.EURC = parseFloat(ethers.utils.formatUnits(eurcWei, eurcDec));
+      console.log(`✅ Balances: USDC=${balances.USDC}, EURC=${balances.EURC}`);
+      if (balances.USDC === 0 && balances.EURC === 0) {
+        showToast('No testnet tokens found – please use the faucet to get USDC on Arc Testnet', true);
       }
     } catch (err) {
       console.error('Balance fetch error', err);
-      if (!demoMode) setDemoMode(true);
+      showToast('Failed to fetch balances – check console', true);
+      balances.USDC = 0; balances.EURC = 0;
     }
     updateBalanceUI();
     validateSwap();
@@ -224,7 +207,6 @@
 
   async function updateGas() {
     if (!connected) { gasSpan.innerText = '—'; return; }
-    if (demoMode) { gasSpan.innerText = '~0.0002 USDC (demo)'; return; }
     try {
       const fee = await provider.getFeeData();
       let gasPrice = fee.gasPrice || fee.maxFeePerGas;
@@ -263,7 +245,7 @@
     lucide.createIcons();
   }
 
-  // ========== SWAP EXECUTION (demo or real) ==========
+  // ========== REAL SWAP EXECUTION (with approval) ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -273,29 +255,10 @@
     processing = true;
     swapButton.disabled = true;
     const originalText = swapButton.innerText;
-    swapButton.innerText = demoMode ? 'Processing demo swap...' : 'Preparing swap...';
+    swapButton.innerText = 'Preparing swap...';
 
-    if (demoMode) {
-      // Simulate swap
-      setTimeout(() => {
-        const rate = (selectedFrom === 'USDC' && selectedTo === 'EURC') ? 0.978 : 1.023;
-        const outAmount = amount * rate;
-        balances[selectedFrom] -= amount;
-        balances[selectedTo] += outAmount;
-        updateBalanceUI();
-        showToast(`✅ Demo: Swapped ${amount.toFixed(4)} ${selectedFrom} → ${outAmount.toFixed(4)} ${selectedTo} (simulated)`, false);
-        swapButton.innerText = 'Done!';
-        setTimeout(() => {
-          swapButton.innerText = originalText;
-          processing = false;
-          validateSwap();
-        }, 1500);
-      }, 1000);
-      return;
-    }
-
-    // REAL MODE (only if demoMode is false and backend works)
     try {
+      // 1. Call backend to get swap transaction data
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -304,12 +267,14 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Backend error');
 
-      // Approval
+      // 2. Token contract & decimals
       const tokenAddr = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddr, ERC20_ABI, provider.getSigner());
       const decimals = await token.decimals();
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to;
+      const spender = data.to; // router
+
+      // 3. Check allowance and approve if needed
       const allowance = await token.allowance(userAddress, spender);
       if (allowance.lt(amountWei)) {
         swapButton.innerText = 'Approving token...';
@@ -318,6 +283,7 @@
         showToast('Approval confirmed');
       }
 
+      // 4. Send swap transaction (wallet confirmation popup appears)
       swapButton.innerText = 'Confirm in wallet...';
       const tx = {
         from: userAddress,
@@ -334,36 +300,48 @@
       showToast(`✅ Swap confirmed! ${selectedFrom} → ${selectedTo}`);
       swapButton.innerText = 'Done!';
       await refreshBalances();
-      setTimeout(() => { swapButton.innerText = originalText; processing = false; validateSwap(); }, 2000);
+      setTimeout(() => {
+        swapButton.innerText = originalText;
+        processing = false;
+        validateSwap();
+      }, 2000);
     } catch (err) {
       console.error(err);
       let msg = err.message.includes('user rejected') ? 'Transaction rejected' : err.message;
-      showToast(`❌ Swap failed: ${msg}. Switching to demo mode.`, true);
-      setDemoMode(true);
+      showToast(`❌ Swap failed: ${msg}`, true);
+      swapButton.innerText = originalText;
       processing = false;
       validateSwap();
     }
   }
 
-  // ========== EVENT LISTENERS ==========
+  // ========== EVENT HANDLERS ==========
   connectBtn.onclick = connectWallet;
   refreshBtn.onclick = async () => { if (connected) await refreshBalances(); await refreshUI(); };
-  forceDemoBtn.onclick = () => setDemoMode(true);
-  document.getElementById('flipBtn').onclick = () => {
+  flipBtn.onclick = () => {
     let tmp = selectedFrom; selectedFrom = selectedTo; selectedTo = tmp;
-    document.getElementById('fromSymbol').innerText = selectedFrom;
-    document.getElementById('toSymbol').innerText = selectedTo;
+    fromSymbolSpan.innerText = selectedFrom;
+    toSymbolSpan.innerText = selectedTo;
     refreshUI();
   };
-  document.getElementById('maxBtn').onclick = () => { if (connected) amountInput.value = balances[selectedFrom]; refreshUI(); };
-  document.querySelectorAll('.percentBtn').forEach(btn => btn.onclick = () => { if (connected) { let p = parseFloat(btn.dataset.pct); amountInput.value = (balances[selectedFrom] * p).toFixed(6); refreshUI(); } });
+  maxBtn.onclick = () => { if (connected) { amountInput.value = balances[selectedFrom]; refreshUI(); } };
+  document.querySelectorAll('.percentBtn').forEach(btn => {
+    btn.onclick = () => { if (connected) { let p = parseFloat(btn.dataset.pct); amountInput.value = (balances[selectedFrom] * p).toFixed(6); refreshUI(); } };
+    btn.classList.add('text-xs', 'px-2', 'py-0.5', 'rounded-full', 'bg-slate-700', 'hover:bg-blue-600/50');
+  });
   amountInput.oninput = refreshUI;
   swapButton.onclick = executeSwap;
-  document.querySelectorAll('.slippagePreset').forEach(btn => btn.onclick = () => { slippage = parseFloat(btn.dataset.slip); slippageSpan.innerText = `${slippage}%`; refreshUI(); });
-  document.getElementById('advToggle').onclick = () => { const p = document.getElementById('advPanel'); p.classList.toggle('hidden'); document.getElementById('chevron').style.transform = p.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)'; };
-  document.getElementById('aiBtn').onclick = () => showToast(`✨ AI: gas ${gasSpan.innerText}, use ${slippage}% slippage`);
+  document.querySelectorAll('.slippagePreset').forEach(btn => {
+    btn.onclick = () => { slippage = parseFloat(btn.dataset.slip); slippageSpan.innerText = `${slippage}%`; refreshUI(); };
+    btn.classList.add('text-xs', 'px-2', 'py-0.5', 'rounded', 'bg-slate-700');
+  });
+  advToggle.onclick = () => {
+    advPanel.classList.toggle('hidden');
+    chevron.style.transform = advPanel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+  };
+  aiBtn.onclick = () => showToast(`✨ AI: gas ${gasSpan.innerText}, use ${slippage}% slippage`);
 
-  // Token selector modal (simplified)
+  // Token selector modal
   const tokenList = [{ sym:"USDC", name:"USD Coin", icon:"circle-dollar-sign" }, { sym:"EURC", name:"Euro Coin", icon:"euro" }];
   function renderTokenModal(side) {
     let html = tokenList.map(t => `<div class="token-item flex justify-between p-3 rounded-xl hover:bg-slate-700/50 cursor-pointer" data-sym="${t.sym}" data-side="${side}"><div class="flex gap-3"><i data-lucide="${t.icon}" class="w-6 h-6"></i><div><div>${t.sym}</div><div class="text-xs">${t.name}</div></div></div><div class="text-sm">${(balances[t.sym]||0).toFixed(4)}</div></div>`).join('');
@@ -376,17 +354,18 @@
     modal.querySelectorAll('.token-item').forEach(el => {
       el.onclick = () => {
         const sym = el.dataset.sym;
-        if (el.dataset.side === 'from') { selectedFrom = sym; document.getElementById('fromSymbol').innerText = sym; }
-        else { selectedTo = sym; document.getElementById('toSymbol').innerText = sym; }
+        if (el.dataset.side === 'from') { selectedFrom = sym; fromSymbolSpan.innerText = sym; }
+        else { selectedTo = sym; toSymbolSpan.innerText = sym; }
         modal.remove(); refreshUI();
       };
     });
   }
-  document.getElementById('fromTokenBtn').onclick = () => renderTokenModal('from');
-  document.getElementById('toTokenBtn').onclick = () => renderTokenModal('to');
+  fromTokenBtn.onclick = () => renderTokenModal('from');
+  toTokenBtn.onclick = () => renderTokenModal('to');
 
   // Sparkline (cosmetic)
-  const canvas = document.createElement('canvas'); canvas.width = 80; canvas.height = 24; canvas.className = 'bg-black/30 rounded ml-2'; document.querySelector('.flex.items-center.gap-2').appendChild(canvas);
+  const canvas = document.createElement('canvas'); canvas.width = 80; canvas.height = 24; canvas.className = 'bg-black/30 rounded ml-2';
+  document.querySelector('.flex.items-center.gap-2').appendChild(canvas);
   let sparkCtx = canvas.getContext('2d');
   let sparkData = Array(20).fill(0.978);
   setInterval(() => {
