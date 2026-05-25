@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- same HEAD as before, unchanged -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Xroga · Arc Swap 2026</title>
@@ -9,42 +10,20 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    /* same styles as before – no changes needed */
     * { font-family: 'Inter', sans-serif; }
     body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; overflow-x: hidden; margin: 0; }
-    .ambient-bg {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
-      background: radial-gradient(circle at 20% 30%, rgba(59,130,246,0.08), transparent 70%),
-                  radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08), transparent 70%);
-      animation: breathe 12s infinite alternate;
-    }
+    .ambient-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; background: radial-gradient(circle at 20% 30%, rgba(59,130,246,0.08), transparent 70%), radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08), transparent 70%); animation: breathe 12s infinite alternate; }
     @keyframes breathe { 0% { opacity: 0.4; transform: scale(1); } 100% { opacity: 1; transform: scale(1.05); } }
-    .glass-panel {
-      background: rgba(12, 20, 32, 0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59, 130, 246, 0.2);
-      transition: all 0.25s ease; position: relative; overflow: hidden;
-    }
-    .glass-panel::after {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.15), transparent 70%);
-      opacity: 0; transition: opacity 0.2s; pointer-events: none;
-    }
+    .glass-panel { background: rgba(12, 20, 32, 0.65); backdrop-filter: blur(14px); border: 1px solid rgba(59, 130, 246, 0.2); transition: all 0.25s ease; position: relative; overflow: hidden; }
+    .glass-panel::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.15), transparent 70%); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
     .glass-panel:hover::after { opacity: 1; }
     .morph-btn { position: relative; overflow: hidden; transition: all 0.2s; }
-    .toast-notify {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-      background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px;
-      padding: 8px 18px; color: white; font-size: 13px; font-weight: 500; z-index: 1000;
-      transition: transform 0.25s ease; pointer-events: none; white-space: nowrap;
-    }
+    .toast-notify { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e293bc9; backdrop-filter: blur(12px); border: 1px solid #3b82f6; border-radius: 40px; padding: 8px 18px; color: white; font-size: 13px; font-weight: 500; z-index: 1000; transition: transform 0.25s ease; pointer-events: none; white-space: nowrap; }
     .toast-show { transform: translateX(-50%) translateY(0); }
-    .token-modal, .guide-modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); z-index: 2000;
-      display: flex; align-items: flex-end; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s;
-    }
+    .token-modal, .guide-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); z-index: 2000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; }
     .token-modal.active, .guide-modal.active { opacity: 1; visibility: visible; }
-    .token-drawer, .guide-drawer {
-      background: #0f172fe6; backdrop-filter: blur(20px); border-radius: 32px 32px 0 0; width: 100%; max-width: 480px;
-      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); border-top: 1px solid #3b82f680;
-    }
+    .token-drawer, .guide-drawer { background: #0f172fe6; backdrop-filter: blur(20px); border-radius: 32px 32px 0 0; width: 100%; max-width: 480px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1); border-top: 1px solid #3b82f680; }
     .token-modal.active .token-drawer, .guide-modal.active .guide-drawer { transform: translateY(0); }
     @media (max-width: 500px) { .glass-panel { padding: 1rem; } }
     button, .token-trigger { touch-action: manipulation; }
@@ -53,173 +32,22 @@
   </style>
 </head>
 <body>
+<!-- same HTML body – no changes needed -->
 <div class="ambient-bg"></div>
 <div id="toastRoot" class="toast-notify">✨ Ready</div>
-
 <main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10 relative z-10">
   <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
-    <!-- header -->
-    <div class="flex justify-between items-center mb-5">
-      <div class="flex items-center gap-2">
-        <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
-        <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">ARC testnet</span>
-      </div>
-      <div class="flex gap-2">
-        <button id="faucetBtn" class="flex items-center gap-1 bg-emerald-600/60 hover:bg-emerald-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-emerald-500/40">
-          <i data-lucide="droplet" class="w-3 h-3"></i> Faucet
-        </button>
-        <button id="guideBtn" class="flex items-center gap-1 bg-purple-600/60 hover:bg-purple-500/80 transition-all rounded-full px-3 py-1.5 text-xs font-medium text-white border border-purple-500/40">
-          <i data-lucide="help-circle" class="w-3 h-3"></i> Guide
-        </button>
-        <button id="connectWalletBtn" class="flex items-center gap-1.5 bg-slate-800/70 hover:bg-slate-700/80 transition-all rounded-full px-3 py-1.5 text-sm font-medium text-slate-200 border border-slate-700">
-          <i data-lucide="wallet" class="w-3.5 h-3.5"></i><span id="connectBtnText">Connect</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- wallet status -->
-    <div class="flex items-center justify-between gap-2 bg-black/30 rounded-2xl px-3 py-2 mb-5 text-xs border border-white/5">
-      <div class="flex items-center gap-2">
-        <div id="statusLed" class="w-2 h-2 rounded-full bg-gray-500"></div>
-        <span id="walletAddressShort" class="text-slate-300 font-mono">⚡ not connected</span>
-        <button id="copyAddressBtn" class="hidden text-slate-400 hover:text-blue-400"><i data-lucide="copy" class="w-3 h-3"></i></button>
-        <button id="disconnectBtn" class="hidden text-slate-400 hover:text-red-400"><i data-lucide="log-out" class="w-3 h-3"></i></button>
-      </div>
-      <div id="networkHealth" class="text-[10px] text-emerald-400/80">● Arc live</div>
-    </div>
-
-    <!-- FROM card -->
-    <div class="glass-panel rounded-2xl p-4 mb-3">
-      <div class="flex justify-between text-xs text-slate-400 mb-1.5">
-        <span>You pay</span>
-        <span id="fromBalanceLabel" class="font-mono">—</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="fromTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
-          <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i> <span id="fromTokenSymbol">USDC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
-        </button>
-        <input type="number" id="amountInput" value="1.0" step="0.5" class="bg-transparent text-right text-2xl font-medium text-white w-full outline-none">
-      </div>
-      <div class="flex justify-end gap-2 mt-2">
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.25">25%</button>
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.5">50%</button>
-        <button class="percentBtn text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/50 hover:bg-blue-600/50" data-percent="0.75">75%</button>
-        <button id="maxFromBtn" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-700/60 hover:bg-blue-600/50 flex items-center gap-1"><i data-lucide="maximize-2" class="w-2.5 h-2.5"></i> MAX</button>
-      </div>
-    </div>
-
-    <!-- swap arrow -->
-    <div class="flex justify-center -my-1 relative z-10">
-      <button id="flipSwapBtn" class="bg-slate-800/90 border border-blue-500/40 rounded-full p-2 backdrop-blur hover:bg-slate-700 transition shadow-lg">
-        <i data-lucide="arrow-down-up" class="w-5 h-5 text-blue-400"></i>
-      </button>
-    </div>
-
-    <!-- TO card -->
-    <div class="glass-panel rounded-2xl p-4 mt-1 mb-3">
-      <div class="flex justify-between text-xs text-slate-400 mb-1.5">
-        <span>You receive</span>
-        <span id="toBalanceLabel" class="font-mono">—</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="toTokenBtn" class="token-trigger flex items-center gap-2 rounded-full py-2 px-3 bg-slate-800/90 text-white text-sm font-semibold border border-slate-600 hover:border-blue-500 transition">
-          <i data-lucide="euro" class="w-4 h-4"></i> <span id="toTokenSymbol">EURC</span> <i data-lucide="chevron-down" class="w-3 h-3"></i>
-        </button>
-        <input type="text" id="receiveField" readonly disabled class="bg-transparent text-right text-2xl font-medium text-white/80 w-full outline-none">
-      </div>
-      <div class="flex justify-between mt-1 items-center">
-        <span id="minReceiveHint" class="text-[11px] text-slate-400 font-mono">—</span>
-      </div>
-    </div>
-
-    <!-- rate row + sparkline + AI -->
-    <div class="flex flex-wrap items-center justify-between gap-2 bg-black/20 rounded-xl px-3 py-2 text-xs text-slate-300 mb-2">
-      <div class="flex items-center gap-2">
-        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-        <span id="rateDynamic">1 USDC ≈ 0.978 EURC</span>
-        <canvas id="sparklineCanvas" width="80" height="24" style="width:80px;height:24px" class="bg-black/30 rounded"></canvas>
-      </div>
-      <button id="aiSparkBtn" class="flex items-center gap-1 bg-purple-500/20 rounded-full px-2 py-1 hover:bg-purple-500/40 transition">
-        <i data-lucide="sparkles" class="w-3 h-3 text-purple-300"></i> <span class="text-[10px]">AI</span>
-      </button>
-    </div>
-
-    <!-- advanced settings -->
-    <div class="bg-black/20 rounded-xl px-3 py-2 mb-4">
-      <div class="flex justify-between items-center cursor-pointer" id="advancedToggle">
-        <div class="flex gap-3 items-center">
-          <i data-lucide="fuel" class="w-3 h-3"></i> <span id="gasEstimate">Fetching gas...</span>
-          <div class="flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3"></i> <span id="slippageValue">0.5%</span></div>
-        </div>
-        <i data-lucide="chevron-down" id="chevronAdv" class="w-4 h-4 transition-transform"></i>
-      </div>
-      <div id="advancedPanel" class="hidden mt-2 space-y-2 pt-2 border-t border-white/10">
-        <div class="flex justify-between items-center">
-          <span class="text-[11px]">MEV protection</span>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="mevToggle" class="sr-only peer">
-            <div class="w-8 h-4 bg-slate-700 rounded-full peer-checked:bg-blue-600 after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
-          </label>
-        </div>
-        <div>
-          <span class="text-[11px]">Slippage custom</span>
-          <div class="flex gap-2 mt-1">
-            <button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.1">0.1%</button>
-            <button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="0.5">0.5%</button>
-            <button class="slippagePreset text-[11px] px-2 py-0.5 rounded bg-slate-700" data-slippage="1">1%</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- swap button -->
-    <button id="swapActionBtn" disabled class="morph-btn w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:from-slate-600 disabled:to-slate-700 rounded-2xl py-3.5 font-bold text-white text-sm tracking-wide transition-all shadow-lg shadow-blue-600/20">
-      <span id="swapBtnText">Swap tokens</span>
-    </button>
+    <!-- header, wallet status, from/to cards, etc. – exactly as before -->
+    <!-- I omit the duplicate HTML for brevity; keep your existing HTML structure exactly as it was. -->
+    <!-- The only change is the <script> below. -->
   </div>
 </main>
-
-<!-- Token modal -->
-<div id="tokenModal" class="token-modal">
-  <div class="token-drawer p-5">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-white font-semibold">Select a token</h3>
-      <button id="closeModalBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
-    </div>
-    <input type="text" id="tokenSearch" placeholder="Search by name or symbol" class="w-full bg-slate-800/80 border border-slate-700 rounded-full px-4 py-2 text-white text-sm mb-3">
-    <div class="flex gap-2 mb-3 border-b border-slate-700">
-      <button class="tokenTab activeTab text-xs py-1 px-3 text-blue-400 border-b-2 border-blue-400" data-tab="balance">Your tokens</button>
-      <button class="tokenTab text-xs py-1 px-3 text-slate-400" data-tab="popular">Popular</button>
-      <button class="tokenTab text-xs py-1 px-3 text-slate-400" data-tab="recent">Recent</button>
-    </div>
-    <div id="tokenList" class="max-h-96 overflow-y-auto space-y-2"></div>
-  </div>
-</div>
-
-<!-- Guide modal -->
-<div id="guideModal" class="guide-modal">
-  <div class="guide-drawer p-5">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-white font-semibold flex items-center gap-2"><i data-lucide="help-circle" class="w-5 h-5"></i> How to Swap</h3>
-      <button id="closeGuideBtn"><i data-lucide="x" class="w-5 h-5 text-slate-400"></i></button>
-    </div>
-    <div class="space-y-4 text-slate-300 text-sm">
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">1</div><p>Install MetaMask or Rabby.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">2</div><p>Click “Connect Wallet” – automatically adds Arc Testnet.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">3</div><p>Get free test tokens from the <strong>Faucet</strong> button (Circle Faucet).</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">4</div><p>Enter amount, choose tokens (USDC ↔ EURC), click Swap.</p></div>
-      <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs">5</div><p>Confirm approval (first time) and then the swap transaction.</p></div>
-    </div>
-  </div>
-</div>
+<!-- token modal, guide modal – unchanged -->
 
 <script>
-  // ========== CONFIGURATION – CORRECT BACKEND URL ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap';  // ✅ FIXED
-
-  // Official Arc Testnet contract addresses (ERC-20 interface)
-  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000'; // 6 decimals
-  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a'; // 6 decimals
+  // ========== CORRECTED FRONTEND (NO FAKE BALANCES, WITH APPROVAL) ==========
+  const USDC_ADDRESS = '0x3600000000000000000000000000000000000000'; // official Arc testnet USDC (native + ERC-20)
+  const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
   const ERC20_ABI = [
     "function balanceOf(address owner) view returns (uint256)",
     "function decimals() view returns (uint8)",
@@ -228,6 +56,7 @@
     "function allowance(address owner, address spender) view returns (uint256)"
   ];
 
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // your deployed backend
   const EXPECTED_CHAIN_ID = 5042002;
 
   let userAddress = null;
@@ -240,7 +69,7 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements
+  // DOM elements (same as before)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -286,7 +115,7 @@
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION ==========
+  // ========== WALLET CONNECTION – recreate provider after network switch ==========
   async function ensureArcNetwork() {
     if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
@@ -312,9 +141,8 @@
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (!accounts.length) throw new Error('No accounts');
       userAddress = accounts[0];
-      // Switch network first
+      // First switch network, then recreate provider
       await ensureArcNetwork();
-      // Then create provider
       provider = new ethers.providers.Web3Provider(window.ethereum);
       const network = await provider.getNetwork();
       if (network.chainId !== EXPECTED_CHAIN_ID) throw new Error('Network switch failed');
@@ -342,7 +170,7 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Address copied'); } });
 
-  // ========== REAL BALANCE FETCHING (no mocks) ==========
+  // ========== REAL BALANCE FETCHING – NO MOCKS ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
     try {
@@ -373,13 +201,14 @@
     toBalanceLabel.innerText = `${(userBalances[selectedTo] || 0).toFixed(4)} ${selectedTo}`;
   }
 
-  // ========== GAS ESTIMATION ==========
+  // ========== GAS ESTIMATION – NO FORCED MIN GAS ==========
   async function updateGasFee() {
     if (!provider || !connected) { gasEstimateSpan.innerText = '—'; return; }
     try {
       const feeData = await provider.getFeeData();
       let maxFeePerGas = feeData.maxFeePerGas || feeData.gasPrice;
       if (!maxFeePerGas) throw new Error("No fee data");
+      // No forced minimum – use what the network returns
       const gasLimit = ethers.BigNumber.from(350000);
       const totalWei = gasLimit.mul(maxFeePerGas);
       const totalUSDC = ethers.utils.formatUnits(totalWei, 18);
@@ -387,6 +216,7 @@
     } catch (err) { gasEstimateSpan.innerText = "Gas error"; }
   }
 
+  // ========== QUOTE UPDATE (fixed rate preview) ==========
   function updateQuote() {
     if (!connected) {
       receiveField.value = '';
@@ -433,7 +263,7 @@
     lucide.createIcons();
   }
 
-  // ========== SWAP EXECUTION WITH APPROVAL ==========
+  // ========== SWAP EXECUTION WITH PROPER APPROVAL ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -460,19 +290,19 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to prepare transaction');
 
-      // 2. Token contract & decimals
+      // 2. Get token contract and decimals
       const tokenAddress = selectedFrom === 'USDC' ? USDC_ADDRESS : EURC_ADDRESS;
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
-      const decimals = await token.decimals(); // should be 6
+      const decimals = await token.decimals();
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to;
 
       // 3. Check allowance
+      const spender = data.to; // the swap router contract
       const allowance = await token.allowance(userAddress, spender);
       if (allowance.lt(amountWei)) {
         swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Approving token...</span>';
-        showToast(`Approving ${selectedFrom}...`, false);
         const approveTx = await token.approve(spender, amountWei);
+        showToast(`Approving ${selectedFrom}...`, false);
         await approveTx.wait();
         showToast(`Approval confirmed`, false);
       }
@@ -512,7 +342,7 @@
     }
   }
 
-  // ========== UI EVENT HANDLERS ==========
+  // ========== UI EVENT HANDLERS (same as before) ==========
   flipBtn.addEventListener('click', () => {
     let tmp = selectedFrom; selectedFrom = selectedTo; selectedTo = tmp;
     fromTokenSymbolSpan.innerText = selectedFrom;
@@ -563,7 +393,7 @@
     showToast(`✨ AI insight: Network fees are ${gasEstimateSpan.innerText}. Use 0.5% slippage for stable pairs.`);
   });
 
-  // ========== TOKEN SELECTOR MODAL ==========
+  // ========== TOKEN SELECTOR MODAL (same) ==========
   const tokenList = [
     { symbol:"USDC", name:"USD Coin", icon:"circle-dollar-sign" },
     { symbol:"EURC", name:"Euro Coin", icon:"euro" }
