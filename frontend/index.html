@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
+    /* All styles from previous working version – keep as is */
     * { font-family: 'Inter', sans-serif; }
     body { background: radial-gradient(ellipse at 40% 50%, #0a0f1f, #010208); min-height: 100vh; overflow-x: hidden; margin: 0; }
     .ambient-bg {
@@ -58,6 +59,7 @@
 
 <main class="w-full max-w-lg mx-auto px-4 py-6 md:py-10 relative z-10">
   <div class="glass-panel rounded-3xl shadow-2xl p-5 md:p-6">
+    <!-- Header, wallet status, swap cards – identical to your working UI -->
     <div class="flex justify-between items-center mb-5">
       <div class="flex items-center gap-2">
         <div class="text-2xl font-black bg-gradient-to-r from-white via-blue-400 to-purple-500 bg-clip-text text-transparent">Xroga</div>
@@ -151,7 +153,7 @@
 
 <script>
   // ========== REAL MODE – UPDATE THIS URL ==========
-  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ Your deployed backend URL
+  const BACKEND_URL = 'https://arc-testnet-swap.vercel.app/api/swap'; // ✅ Replace with your actual backend URL
 
   // Official Arc Testnet contract addresses (ERC-20 interface)
   const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
@@ -171,7 +173,7 @@
   let userBalances = { USDC: 0, EURC: 0 };
   let tokenContracts = {};
 
-  // DOM elements (same as before, omitted for brevity)
+  // DOM elements (already defined, but we'll reference them)
   const connectBtn = document.getElementById('connectWalletBtn');
   const connectBtnText = document.getElementById('connectBtnText');
   const walletAddrSpan = document.getElementById('walletAddressShort');
@@ -217,7 +219,7 @@
   closeGuideBtn.addEventListener('click', () => guideModal.classList.remove('active'));
   guideModal.addEventListener('click', (e) => { if (e.target === guideModal) guideModal.classList.remove('active'); });
 
-  // ========== WALLET CONNECTION ==========
+  // ========== WALLET CONNECTION (real) ==========
   async function ensureArcNetwork() {
     if (!window.ethereum) throw new Error("No wallet");
     const chainIdHex = `0x${EXPECTED_CHAIN_ID.toString(16)}`;
@@ -270,7 +272,7 @@
 
   copyBtn.addEventListener('click', () => { if (userAddress) { navigator.clipboard.writeText(userAddress); showToast('Copied'); } });
 
-  // ========== BALANCE FETCHING (real, no mocks) ==========
+  // ========== BALANCE FETCHING (real) ==========
   async function fetchBalances() {
     if (!connected || !provider) return;
     try {
@@ -337,7 +339,7 @@
     lucide.createIcons();
   }
 
-  // ========== REAL SWAP EXECUTION (with approval) ==========
+  // ========== REAL SWAP EXECUTION (with approval and wallet confirmation) ==========
   async function executeSwap() {
     if (!connected) { showToast('Connect wallet first', true); return; }
     const amount = parseFloat(amountInput.value);
@@ -369,7 +371,7 @@
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider.getSigner());
       const decimals = await token.decimals(); // should be 6
       const amountWei = ethers.utils.parseUnits(amount.toString(), decimals);
-      const spender = data.to;
+      const spender = data.to; // the swap router
 
       // 3. Check allowance, approve if needed
       const allowance = await token.allowance(userAddress, spender);
@@ -381,7 +383,7 @@
         showToast(`Approval confirmed`, false);
       }
 
-      // 4. Send swap transaction
+      // 4. Send swap transaction – wallet confirmation popup appears here
       swapBtnText.innerHTML = '<span class="flex items-center gap-2"><div class="loading-spinner"></div> Confirm swap in wallet...</span>';
       const tx = {
         from: userAddress,
@@ -426,7 +428,7 @@
   advancedToggle.addEventListener('click', () => { advancedPanel.classList.toggle('hidden'); chevronAdv.style.transform = advancedPanel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)'; });
   aiSparkBtn.addEventListener('click', () => showToast(`✨ AI insight: Network fees are ${gasEstimateSpan.innerText}. Use 0.5% slippage.`));
 
-  // Token selector modal
+  // Token selector modal (unchanged)
   const tokenList = [{ symbol:"USDC", name:"USD Coin", icon:"circle-dollar-sign" }, { symbol:"EURC", name:"Euro Coin", icon:"euro" }];
   function renderTokenModal(side) {
     let search = document.getElementById('tokenSearch').value.toLowerCase();
@@ -451,7 +453,7 @@
   document.getElementById('closeModalBtn').addEventListener('click', () => tokenModal.classList.remove('active'));
   document.getElementById('tokenSearch').addEventListener('input', () => renderTokenModal('from'));
 
-  // Sparkline (cosmetic)
+  // Sparkline
   let sparklineData = Array(20).fill(0.978);
   let sparkCtx = document.getElementById('sparklineCanvas').getContext('2d');
   function updateSparkline() {
@@ -468,6 +470,7 @@
   }
   setInterval(() => { if (connected) updateSparkline(); }, 4000);
 
+  // Chain/account event listeners
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', (accs) => { if (!accs.length) disconnect(); else { userAddress = accs[0]; provider = new ethers.providers.Web3Provider(window.ethereum); refreshUI(); } });
     window.ethereum.on('chainChanged', () => window.location.reload());
