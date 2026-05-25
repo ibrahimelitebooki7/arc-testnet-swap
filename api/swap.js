@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     }
 
     if (!process.env.KIT_KEY || !process.env.PRIVATE_KEY) {
-      throw new Error("Missing KIT_KEY or PRIVATE_KEY environment variables");
+      return res.status(500).json({ error: "Server misconfigured: missing KIT_KEY or PRIVATE_KEY" });
     }
 
     const kit = new AppKit();
@@ -29,11 +29,17 @@ export default async function handler(req, res) {
       tokenIn,
       tokenOut,
       amountIn: amountIn.toString(),
-      userAddress: walletAddress,   // 🔥 CRITICAL: pass the user's address
+      userAddress: walletAddress,   // critical
       config: { kitKey: process.env.KIT_KEY },
     };
 
     const result = await kit.swap(params);
+
+    // Validate result
+    if (!result.to || !result.data) {
+      throw new Error("Swap preparation returned invalid transaction data");
+    }
+
     const transaction = {
       to: result.to,
       data: result.data,
